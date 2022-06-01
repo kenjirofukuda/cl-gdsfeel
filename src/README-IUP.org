@@ -1,0 +1,37 @@
+
+
+* Setup IUP
+** Platform: common
+
+#+BEGIN_SRC bash
+  cd ~/Nextcloud/lisp/common-lisp/projects
+  git clone https://github.com/lispnik/iup.git
+  git clone https://github.com/lispnik/tecgraf-base.git
+  git clone https://github.com/lispnik/pffft.git
+  git clone https://github.com/lispnik/cd.git
+  git clone https://github.com/lispnik/im.git
+  git clone https://github.com/lispnik/tecgraf-libs.git
+  cd tecgraf-libs/
+  ./update.sh
+  ls libs/
+  ros config set dynamic-space-size 4096
+#+END_SRC
+
+** Platform Linux
+
+require `patchelf`  command.
+
+** platform Windows
+
+edit bashrc
+
+#+BEGIN_SRC bash
+  vi ~/.bashrc
+#+END_SRC
+
+insert PATH
+
+#+BEGIN_SRC bash
+  export PATH="${HOME}/Nextcloud/lisp/common-lisp/projects/tecgraf-libs/libs:${PATH}"
+#+END_SRC
+
