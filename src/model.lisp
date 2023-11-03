@@ -1,6 +1,7 @@
 (defpackage cl-gdsfeel/model
   (:use #:cl
 	#:local-time)
+  (:shadow :structure)
   (:export
    :alloc-typed-vector
    :vector-last

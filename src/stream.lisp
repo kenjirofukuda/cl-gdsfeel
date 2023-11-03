@@ -9,7 +9,10 @@
 		#:stat #:stat-size)
   (:shadowing-import-from #:alexandria
 			  #:flatten)
+  (:shadowing-import-from #:cl-gdsfeel/model
+			  #:structure)
   (:export #:<inform>
+	   #:path
 	   #:run
 	   #:entry))
 
@@ -165,6 +168,9 @@
       (+ v 1900)
       v))
 
+(defun fix-ce-value (v user-unit)
+  (let ((ratio (rationalize user-unit)))
+    (+ 0.0d0 (* (truncate (/ v ratio)) ratio))))
 
 (defun decode-local-time (octet-array)
   (assert (= (length octet-array) 6))
@@ -204,7 +210,8 @@
       (with-open-file (in (slot-value inform 'path) :element-type '(unsigned-byte 8))
         (setf (records inform) (reverse (read-loop in)))))
   (let ((structure nil)
-        (element nil))
+        (element nil)
+	(uunit nil))
     (dolist (record (records inform))
       (let ((rectype (header-symbol record))
             (body-data (do-body-data record)))
@@ -228,6 +235,7 @@
 
           (_units
            (setf (user-unit (library inform)) (elt body-data 0))
+           (setq uunit (elt body-data 0))
            (setf (meter-unit (library inform)) (elt body-data 1)))
           
           (_strname
@@ -242,15 +250,13 @@
            (add-element structure element))
 
 	  (_width
-	   (setf (path-width element) (* (user-unit (library inform))
-					 body-data)))
+	   (setf (path-width element) (fix-ce-value (* uunit body-data) uunit)))
           (_pathtype
            (setf (pathtype element) body-data))
 	  
           (_xy
            (setf (xy element) (map 'list
-				   (lambda (x) (* (user-unit (library inform))
-						  x))
+				   (lambda (x) (fix-ce-value (* uunit x) uunit))
 				   body-data)))
           
           (_layer
@@ -292,10 +298,11 @@
 ;;;; ----------------- debugging IN  ----------------
 
 (defun one-element-as-atomic (sequence)
+  "'(0 1 2) => '(0 1 2)
+   '(0)     => 0"
   (if (= (length sequence) 1)
       (elt sequence 0)
       sequence))
-
 
 (defgeneric body-data (type body-bytes)
   (:documentation "generic body data"))

@@ -1,20 +1,22 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (ql:quickload '("iup" "cd-context-plus" "cl-vectors") ))
+  (ql:quickload '("iup" "cd-context-plus" "cl-vectors" "bt-semaphore")))
 
 
 (defpackage :cl-gdsfeel/iup-gui
   (:use #:cl
+	#:alexandria
 	#:cl-gdsfeel/model
 	#:cl-gdsfeel/stream)
+  (:shadowing-import-from :cl-gdsfeel/model :structure)
   (:export #:main
 	   #:entry-point))
 
 (in-package :cl-gdsfeel/iup-gui)
 
-(defparameter +default-window-title+ "GdsFeel")
+(define-constant +default-window-title+ "GdsFeel" :test #'string=)
 (defparameter *canvas* nil)
 
-(defvar *inform*)
+(defvar *inform* nil)
 (defvar *structure* nil)
 (defvar *element* nil)
 
@@ -27,9 +29,11 @@
 				:action 'open-stream-format-dialog))
 	   (item-layout (iup:item :title (format nil "&Layout ~CCtrl+L" #\Tab)
 				  :action (lambda (handle)
+					    (declare (ignore handle))
 					    (iup:show (iup:layout-dialog nil)))))
 	   (item-exit (iup:item :title "E&xit"
 				:action (lambda (handle)
+					  (declare (ignore handle))
 					  iup:+close+)))
 	   (file-menu (iup:menu (list 
 				 item-open
@@ -107,10 +111,16 @@
   (iup:refresh-children (iup:handle "dialog"))
   iup:+default+)
 
+(defun initial-directory ()
+  (and *inform*
+       (slot-value *inform* 'path)
+       (uiop:pathname-parent-directory-pathname (slot-value *inform* 'path))))
+
 (defun open-stream-format-dialog (handle)
   (declare (ignore handle))
   (let ((dialog (iup:file-dialog
-		 :extfilter "GDS file|*.gds;*.gds2;*.sf|All Files|*.*|")))
+		 :extfilter "GDS file|*.gds;*.gds2;*.sf|All Files|*.*|"
+		 :directory (initial-directory))))
     (unwind-protect
          (progn
            (iup:popup dialog iup:+center+ iup:+center+)
@@ -126,10 +136,10 @@
 
 
 (defun struclist-action-cb (self text item state)
-  (declare (ignore self))
+  (declare (ignore self item))
   (when (zerop state)
     (return-from struclist-action-cb iup:+default+))
-  (print (list text item state))
+  ;; (print (list text item state))
   (activate-structure (child-named (library *inform*) text))
   iup:+default+)
 
@@ -145,10 +155,10 @@
 
 
 (defun elementlist-action-cb (self text item state)
-  (declare (ignore self))
+  (declare (ignore self text))
   (when (zerop state)
     (return-from elementlist-action-cb iup:+default+))
-  (print (list text item state))
+  ;; (print (list text item state))
   (activate-element (elt (children *structure*) (1- item)))
   iup:+default+)
 
@@ -209,8 +219,7 @@
 		     (path-width element)
 		     (pathtype element)) 
 		    canvas
-		    :path-mode-closed-lines)
-  )
+		    :path-mode-closed-lines))
 
 
 (defun ad/stroke-ref (element canvas) 
@@ -284,7 +293,7 @@
 
 
 (defun draw-structure (structure canvas)
-  (print "draw-structure>>")
+  ;; (print "draw-structure>>")
   (multiple-value-bind (canvas-w canvas-h w-mm h-mm)
       (cd:size canvas)
     (declare (ignore w-mm h-mm))
@@ -367,5 +376,24 @@
   (declare (ignore args))
   (princ "Hage"))
 
+(defun print-thread-info ()
+  (let* ((curr-thread (bt:current-thread))
+	 (curr-thread-name (bt:thread-name curr-thread))
+	 (all-threads (bt:all-threads)))
+    (format t "Current thread: ~a~%~%" curr-thread)
+    (Format t "Current thread name: ~a~%~%" curr-thread-name)
+    (format t "All threads:~% ~{~a~%~}~%" all-threads))
+  nil)
 
-(entry-point)
+(defun start-gds-thread ()
+  (bt:make-thread
+   (lambda () (entry-point)) :name "gds"))
+
+(defun quit-gds-thread ()
+  (dolist (each (bt:all-threads))
+    (let ((name (bt:thread-name each)))
+      (if (string-equal name "gds")
+	  (bt:destroy-thread each)))))
+
+(start-gds-thread)
+

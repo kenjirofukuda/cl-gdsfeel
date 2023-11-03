@@ -18,6 +18,7 @@
 	       "cd"
 	       "im"
 	       "iup-cd"
+	       "bt-semaphore"
 	       )
   :components ((:module "src"
                 :components
