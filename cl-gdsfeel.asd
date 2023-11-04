@@ -19,11 +19,10 @@
 	       )
   :components ((:module "src"
                 :components
-		((:file "iup-gui"
-		  :depends-on ("model"
-			       "stream"))
+		((:file "iup-gui" :depends-on ("stream"))
 		 (:file "stream" :depends-on ("model"))
-		 (:file "model"))))
+		 (:file "model" :depends-on ("geom"))
+		 (:file "geom"))))
   :description ""
   :in-order-to ((test-op (test-op "cl-gdsfeel/tests"))))
 

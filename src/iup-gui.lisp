@@ -232,7 +232,10 @@
   (setf (cd:foreground canvas) (if (transform-effective-p element)
 				   cd:+blue+
 				   cd:+black+))
-  (ad/stroke-ref element canvas))
+  (ad/stroke-ref element canvas)
+  (setf (cd:foreground canvas) cd:+magenta+)
+  (let ((b (data-bounds element)))
+    (wd:rect canvas (aref b 0 0) (aref b 1 0) (aref b 0 1) (aref b 1 1))))
 
 
 (defmethod ad/stroke ((element <aref>) canvas)
@@ -243,45 +246,8 @@
   (ad/stroke-ref element canvas))
 
 
-(defun ad/coords (element)
-  (aops:reshape (coerce (xy element) 'vector) '(t 2)))
-
-
-(defun ad/bounds (element)
-  (let* ((coords (ad/coords element))
-	 (min (aops:margin
-	       (lambda (col)
-		 (reduce #'min col))
-	       coords 0))
-	 (max (aops:margin
-	       (lambda (col)
-		 (reduce #'max col))
-	       coords 0)))
-    (aops:combine (vector min max))))
-
-
-(defun ad/structure-bounds (structure)
-  (let ((bounds nil)
-	(xmins '())
-	(ymins '())
-	(xmaxs '())
-	(ymaxs '()))    
-    (loop for each in (children structure) 
-	  do (setq bounds (ad/bounds each))
-	     (push (aref bounds 0 0) xmins)
-	     (push (aref bounds 0 1) ymins)
-	     (push (aref bounds 1 0) xmaxs)
-	     (push (aref bounds 1 1) ymaxs))
-    (make-array '(2 2) :initial-contents
-		(list 
-		 (list  (apply #'min xmins)
-			(apply #'min ymins))
-		 (list  (apply #'max xmaxs)
-			(apply #'max ymaxs))))))
-
-
 (defun ad/extent (element)
-  (let ((bounds (ad/bounds element)))
+  (let ((bounds (data-bounds element)))
     (cons 
      (- (aref bounds 1 0)
 	(aref bounds 0 0))
@@ -310,12 +276,17 @@
     (setf (wd:window canvas)
 	  (apply #'values
 		 (min-max-bounds-to-fit-canvas
-		  (ad/structure-bounds structure) canvas-w canvas-h)))
+		  (data-bounds structure) canvas-w canvas-h)))
     (setf (wd:viewport canvas)
 	  (values 0 (1- canvas-w) 0 (1- canvas-h)))
     (setf (cd:foreground canvas) cd:+black+)
-    (stroke-structure structure canvas)))
+    (stroke-structure structure canvas))
 
+  )
+
+(defun draw-prototype (canvas)
+  (cd:line canvas 10 20 300 400)
+  )
 
 (defun min-max-bounds-to-fit-canvas (bounds width height)
   (let* ((xmin (aref bounds 0 0))
@@ -342,6 +313,7 @@
   (declare (ignore handle x y))
   (cd:activate *canvas*)
   (draw-structure *structure* *canvas*)
+  (draw-prototype *canvas*)
   (cd:flush *canvas*)
   iup:+default+)
 

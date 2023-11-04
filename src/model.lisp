@@ -1,7 +1,8 @@
 (defpackage cl-gdsfeel/model
   (:use #:cl
 	#:local-time
-	#:clem)
+	#:clem
+	#:cl-gdsfeel/geom)
   (:shadow :structure)
   (:export
    :alloc-typed-vector
@@ -11,6 +12,7 @@
    :children
    :resolved
    :resolved-children
+   :data-bounds
    
    :<named-container>
    :name
@@ -88,7 +90,15 @@
   (elt v (1- (length v))))
 
 
-(defclass <tree-node> () ())
+(defclass <tree-node> ()
+  ((cached-data-bounds :initform nil :accessor cached-data-bounds)))
+
+(defgeneric data-bounds (object))
+
+(defmethod data-bounds ((object <tree-node>))
+  (unless (cached-data-bounds object)
+    (setf (cached-data-bounds object) (calc-bounds-2a object)))
+  (cached-data-bounds object))
 
 
 (defmethod parent ((tree-node <tree-node>))
@@ -193,6 +203,48 @@
 		    (aref coords i 1))
 		   result))
     (reverse result)))
+
+(defgeneric calc-bounds-2a (object))
+
+
+(defmethod calc-bounds-2a ((element <element>))
+  (let* ((coords (coords-2a element))
+	 (min (aops:margin
+	       (lambda (col)
+		 (reduce #'min col))
+	       coords 0))
+	 (max (aops:margin
+	       (lambda (col)
+		 (reduce #'max col))
+	       coords 0)))
+    (aops:combine (vector min max))))
+
+;; (defmethod calc-bounds-2a ((element <sref>))
+;;   (let* ((s-local-bounds (resolved element))
+;; 	 (off-x (first (xy element)))
+;; 	 (off-y (first (xy element)))))
+;;   )
+
+
+(defmethod calc-bounds-2a ((structure <structure>))
+  (let ((bounds nil)
+	(xmins '())
+	(ymins '())
+	(xmaxs '())
+	(ymaxs '()))    
+    (loop for each in (children structure) 
+	  do (setq bounds (data-bounds each))
+	     (push (aref bounds 0 0) xmins)
+	     (push (aref bounds 0 1) ymins)
+	     (push (aref bounds 1 0) xmaxs)
+	     (push (aref bounds 1 1) ymaxs))
+    (make-array '(2 2) :initial-contents
+		(list 
+		 (list  (apply #'min xmins)
+			(apply #'min ymins))
+		 (list  (apply #'max xmaxs)
+			(apply #'max ymaxs))))))
+
 
 
 (defmethod primitive-p ((element <element>)) t)
