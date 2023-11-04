@@ -268,6 +268,26 @@
           (_sname
            (setf (refname element) body-data))
 
+	  (_strans
+	   (setf (reflected-p element) (not (zerop (logand (elt record 2) #x80))))
+	   (setf (abs-angle-p element) (not (zerop (logand (elt record 3) #x01))))
+	   (setf (abs-mag-p element) (not (zerop (logand (elt record 3) #x02))))
+	   (unless (zerop body-data)
+	     (recout)
+	     (print record)
+	     (format t "~19,,' ,4:B" body-data)))
+
+          (_mag
+	   (setf (mag element) body-data)
+	   (unless (zerop body-data)
+	     (recout)))
+	  
+          (_angle
+	   (setf (angle element) body-data)
+	   (unless (zerop body-data)
+	     (recout)))
+
+	  
           ;; ((_strans elflags strclass presentation)
           ;;  (recout)
           ;;  (print record)
@@ -276,7 +296,7 @@
           
           (_string
            (setf (contents element) body-data))
-
+	  
           (_endel
            (setq element nil))
 

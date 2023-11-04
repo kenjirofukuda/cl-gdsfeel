@@ -1,6 +1,7 @@
 (defpackage cl-gdsfeel/model
   (:use #:cl
-	#:local-time)
+	#:local-time
+	#:clem)
   (:shadow :structure)
   (:export
    :alloc-typed-vector
@@ -42,7 +43,9 @@
    :abs-mag-p
    :abs-angle-p
    :reflected-p
-   
+   :lookup-affine-transform
+   :transform-effective-p
+
    :<element>
    
    :structure
@@ -69,6 +72,7 @@
    :<aref>
    )
   )
+
 
 (in-package :cl-gdsfeel/model)
 
@@ -173,7 +177,7 @@
 
    ))
 
-
+(defconstant +radians-per-degree+  0.017453292519943295d0)
 
 (defmethod coords-2a ((element <element>))
   (aops:reshape (coerce (xy element) 'vector) '(t 2)))
@@ -197,6 +201,29 @@
 (defmethod primitive-p ((element <reference>)) nil)
 
 
+(defun non-zerop (v) (not (zerop v)))
+
+
+(defmethod transform-effective-p ((strans <strans>))
+  (or (non-zerop (mag strans))
+      (non-zerop (angle strans))
+      (reflected-p strans)
+      (abs-mag-p strans)
+      (abs-angle-p strans)))
+
+
+(defmethod lookup-affine-transform ((reference <reference>))
+  (let ((m (clem:make-affine-transformation :x-shift (first (xy reference))
+					    :y-shift (second (xy reference))
+					    :x-scale (mag reference)
+					    :y-scale (mag reference)
+					    :theta (* +radians-per-degree+ (angle reference)))))
+    (when (reflected-p reference)
+      (setf (mref m 0 1) (- (mref m 0 1)))
+      (setf (mref m 1 1) (- (mref m 1 1))))
+    m))
+
+
 (defmethod child-names ((container <named-container>))
   (map 'vector #'name (children container)))
 
@@ -208,7 +235,7 @@
 
 
 (defmethod leaf-p ((structure <structure>))
-  (= 0 (length (reference-elements structure))))
+  (zerop (length (reference-elements structure))))
 
 
 (defmethod leaf-p ((element <element>))

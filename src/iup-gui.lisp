@@ -229,11 +229,17 @@
 
 (defmethod ad/stroke ((element <sref>) canvas)
   (setf (cd:mark-type canvas) :mark-hollow-diamond)
+  (setf (cd:foreground canvas) (if (transform-effective-p element)
+				   cd:+blue+
+				   cd:+black+))
   (ad/stroke-ref element canvas))
 
 
 (defmethod ad/stroke ((element <aref>) canvas)
   (setf (cd:mark-type canvas) :mark-x)
+  (setf (cd:foreground canvas) (if (transform-effective-p element)
+				   cd:+blue+
+				   cd:+black+))
   (ad/stroke-ref element canvas))
 
 
@@ -309,6 +315,7 @@
 	  (values 0 (1- canvas-w) 0 (1- canvas-h)))
     (setf (cd:foreground canvas) cd:+black+)
     (stroke-structure structure canvas)))
+
 
 (defun min-max-bounds-to-fit-canvas (bounds width height)
   (let* ((xmin (aref bounds 0 0))
