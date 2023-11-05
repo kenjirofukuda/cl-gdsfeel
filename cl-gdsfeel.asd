@@ -8,6 +8,7 @@
                "nibbles"
                "array-operations"
                "local-time"
+	       "cl-geometry2"
                "clem"
                "cl-slice"
 	       "cl-vectors"
