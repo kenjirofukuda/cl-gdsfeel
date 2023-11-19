@@ -131,7 +131,7 @@
 
 
 (defun device->world (vp h v)
-  (let ((inv (clem:invert-matrix (final-transform vp))))    
+  (let ((inv (clem:invert-matrix (final-transform vp))))
     (multiple-value-bind (xw yw)
 	(clem:transform-coord h v inv)
       (p xw yw))))
