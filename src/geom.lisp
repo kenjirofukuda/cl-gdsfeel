@@ -40,6 +40,7 @@
   (p (+ (x p1) (x p2))
      (+ (y p1) (y p2))))
 
+
 (defun dotpairp (x)
   (and (listp x) (atom (car x)) (not (listp (cdr x)))))
 
