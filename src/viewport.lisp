@@ -12,8 +12,16 @@
 	   #:w-scale
 	   #:w-center-x
 	   #:w-center-y
-	   #:transform
-	   #:basic-transform))
+	   #:w-center
+	   #:basic-transform
+	   #:world->device
+	   #:device->world
+	   #:pop-transform
+	   #:push-transform
+	   #:final-transform
+	   #:get-bounds
+	   #:set-bounds
+	   #:damage-transform))
 
 (in-package :cl-gdsfeel/viewport)
 
@@ -105,6 +113,7 @@
 
 (defun push-transform (vp tx)
   (push tx (_transform-stack vp))
+  (damage-transform vp)
   tx)
 
 
@@ -113,27 +122,29 @@
       nil
       (let ((result (car (_transform-stack vp))))
 	(setf (_transform-stack vp) (cdr (_transform-stack vp)))
+	(damage-transform vp)
 	result)))
 
 
 (defmethod bounds ((viewport <viewport>) (w-bounds <bounding-box>) ) )
 
 
-(defun fit-xxyy (viewport xmin xmax ymin ymax)
-  (list viewport xmin xmax ymin ymax)
-  )
-
-
-(defun world->device (vp x y)
+(defmethod world->device ((vp <viewport>) (pt <point>))
   (multiple-value-bind (xd yd)
-      (clem:transform-coord x y (final-transform vp))
+      (clem:transform-coord (x pt) (y pt) (final-transform vp))
     (p xd yd)))
 
 
-(defun device->world (vp h v)
+(defmethod world->device ((vp <viewport>) (bbox <bounding-box>))
+  (let ((origin (world->device vp (bbox-origin bbox)))
+	(corner (world->device vp (bbox-corner bbox))))
+    (2point->bbox origin corner)))
+
+
+(defmethod device->world ((vp <viewport>) (pt <point>))
   (let ((inv (clem:invert-matrix (final-transform vp))))
     (multiple-value-bind (xw yw)
-	(clem:transform-coord h v inv)
+	(clem:transform-coord (x pt) (y pt) inv)
       (p xw yw))))
 
 
@@ -141,13 +152,9 @@
 (defvar *vp* nil)
 
 (defun setup ()
-  (setq *r* (make-instance '<bounding-box> :x-min 10
-					   :x-max 200
-					   :y-min 3000
-					   :y-max 4000)) 
-
+  (setq *r* (make-bbox 0 0 640 480)) 
   (setq *vp* (make-instance '<viewport> :width 640
 					:height 480))
-  (set-bounds *vp* *r*)
-  )
+  (set-bounds *vp* *r*))
+
 (setup)

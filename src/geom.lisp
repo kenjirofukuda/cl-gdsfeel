@@ -27,8 +27,14 @@
 
 (in-package cl-gdsfeel/geom)
 
+
 (defclass <point> (point)
   ())
+
+
+(defmethod print-object ((object point) stream)
+  (print-unreadable-object (object stream :type nil)
+    (format stream "~a @ ~a" (x object) (y object))))
 
 
 (defun p (x y)

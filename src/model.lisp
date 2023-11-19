@@ -2,6 +2,7 @@
   (:use #:cl
 	#:local-time
 	#:clem
+	#:cl-geometry2
 	#:cl-gdsfeel/geom)
   (:shadow :structure)
   (:export
@@ -13,6 +14,7 @@
    :resolved
    :resolved-children
    :data-bounds
+   :data-bbox
    
    :<named-container>
    :name
@@ -72,6 +74,8 @@
    :refname
 
    :<aref>
+   
+   :points
    )
   )
 
@@ -91,14 +95,26 @@
 
 
 (defclass <tree-node> ()
-  ((cached-data-bounds :initform nil :accessor cached-data-bounds)))
+  ((cached-data-bounds :initform nil :accessor cached-data-bounds)
+   (cached-bbox :initform nil :accessor cached-bbox)))
+
 
 (defgeneric data-bounds (object))
+
+
+(defgeneric data-bbox (object))
+
 
 (defmethod data-bounds ((object <tree-node>))
   (unless (cached-data-bounds object)
     (setf (cached-data-bounds object) (calc-bounds-2a object)))
   (cached-data-bounds object))
+
+
+(defmethod data-bbox ((object <tree-node>))
+  (unless (cached-bbox object)
+    (setf (cached-bbox object) (calc-bbox object)))
+  (cached-bbox object))
 
 
 (defmethod parent ((tree-node <tree-node>))
@@ -204,7 +220,15 @@
 		   result))
     (reverse result)))
 
+
+(defmethod points ((element <element>))
+  (mapcar #'as-point (coords element)))
+
+
 (defgeneric calc-bounds-2a (object))
+
+
+(defgeneric calc-bbox (object))
 
 
 (defmethod calc-bounds-2a ((element <element>))
@@ -219,11 +243,9 @@
 	       coords 0)))
     (aops:combine (vector min max))))
 
-;; (defmethod calc-bounds-2a ((element <sref>))
-;;   (let* ((s-local-bounds (resolved element))
-;; 	 (off-x (first (xy element)))
-;; 	 (off-y (first (xy element)))))
-;;   )
+
+(defmethod calc-bbox ((element <element>))
+  (points->bbox (points element)))
 
 
 (defmethod calc-bounds-2a ((structure <structure>))
@@ -245,6 +267,24 @@
 		 (list  (apply #'max xmaxs)
 			(apply #'max ymaxs))))))
 
+
+(defmethod calc-bbox ((structure <structure>))
+  (let ((bbox nil)
+	(xmins '())
+	(ymins '())
+	(xmaxs '())
+	(ymaxs '()))    
+    (loop for each in (children structure) 
+	  do (setq bbox (data-bbox each))
+	     (push (x-min bbox) xmins)
+	     (push (y-min bbox) ymins)
+	     (push (x-max bbox) xmaxs)
+	     (push (y-max bbox) ymaxs))
+    (make-bbox
+     (apply #'min xmins)
+     (apply #'min ymins)
+     (apply #'max xmaxs)
+     (apply #'max ymaxs))))
 
 
 (defmethod primitive-p ((element <element>)) t)
