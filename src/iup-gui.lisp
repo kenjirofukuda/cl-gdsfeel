@@ -84,6 +84,8 @@
 			 :maxsize "x800"
 			 :map_cb 'canvas-map
 			 :unmap_cb 'canvas-unmap
+			 :motion_cb 'canvas-motion
+			 :button_cb 'canvas-button
 			 :action 'canvas-redraw			 
 			 :handlename "canvas"))
 	   (hbox
@@ -114,12 +116,18 @@
 (defun dialog-resize-cb (handle width height)
   (declare (ignore handle))
   (print (cons width height))
-  (unless *viewport*
-    (setf *viewport* (make-instance '<viewport> :width width
-						:height height)))
-  (setf (port-width *viewport*) width)
-  (setf (port-height *viewport*) height)
-  (damage-transform *viewport*)
+
+  (unless (null *canvas*)
+    (multiple-value-bind (canvas-w canvas-h)
+	(cd:size *canvas*)
+
+      (unless *viewport*
+	(setf *viewport* (make-instance '<viewport> :width canvas-w
+						    :height canvas-h)))
+      (setf (port-width *viewport*) canvas-w)
+      (setf (port-height *viewport*) canvas-h)
+      (damage-transform *viewport*)))
+
   (mapcar (lambda (handle-name)
 	    (setf (iup:attribute (iup:handle handle-name) :maxsize)
 		  (format nil "x~d" (- height 50))) )
@@ -298,10 +306,18 @@
     (wd:mark canvas (car origin) (cdr origin))))
 
 
-(defun ad/stroke-ref-cd (element canvas) 
-  (let* ((origin (first (points element)))
-	 (dp (world->device *viewport* (as-point origin))))
+(defun mark-world (canvas wpt)
+  (let ((dp (world->device *viewport* (as-point wpt))))
     (cd:mark canvas (x dp) (y dp))))
+
+
+(defun mark-world-points (canvas points)
+  (dolist (wpt points)
+    (mark-world canvas wpt)))
+
+
+(defun ad/stroke-ref-cd (element canvas)
+  (mark-world canvas (first (points element))))
 
 
 
@@ -387,8 +403,15 @@
   (when (null structure)
     (return-from draw-structure-cd))
   (setf (cd:foreground canvas) cd:+black+)
-  (set-bounds *viewport* (data-bbox *structure*))
-  (stroke-structure structure canvas #'ad/stroke-cd))
+  (set-bounds *viewport* (data-bbox structure))
+  (stroke-structure structure canvas #'ad/stroke-cd)
+  (setf (cd:mark-type canvas) :mark-circle)
+  (mark-world canvas (bbox-mid (data-bbox structure)))
+  (setf (cd:mark-type canvas) :mark-star)
+  (mark-world canvas (p 0 0))
+  (setf (cd:mark-type canvas) :mark-hollow-circle)
+  (mark-world-points canvas (bbox-points (data-bbox structure)))
+  )
 
 
 (defun draw-structure (structure canvas)
@@ -398,7 +421,10 @@
 
 
 (defun draw-prototype (canvas)
-  (cd:line canvas 10 20 300 400)
+  (cd:line canvas 0 0 (port-width *viewport*) (port-height *viewport*))
+  (if *structure*
+      (cd:line canvas 0 0 (port-center-x *viewport*) (port-center-y *viewport*))
+      )
   )
 
 (defun min-max-bounds-to-fit-canvas (bounds width height)
@@ -420,6 +446,18 @@
      (+ x-center half-width)
      (- y-center half-height)
      (+ y-center half-height))))
+
+
+(defun canvas-motion (handle x y status)
+  (print (list :handle handle :x x :y y :status (iup:status-plist status)))
+  iup:+default+
+  )
+
+
+(defun canvas-button (handle button pressed x y status)
+  (print (list :handle handle :button button :pressed pressed :x x :y y :status (iup:status-plist status)))
+  iup:+default+
+  )
 
 
 (defun canvas-redraw (handle x y)
@@ -486,6 +524,16 @@
     (let ((name (bt:thread-name each)))
       (if (string-equal name "gds")
 	  (bt:destroy-thread each)))))
+
+
+(defun mark (x y)
+  (unless (or (null *viewport*) (null *canvas*))
+    (cd:activate *canvas*)
+    (setf (cd:mark-type *canvas*) :mark-plus)
+    (cd:flush *canvas*)
+
+    )
+  )
 
 (start-gds-thread)
 

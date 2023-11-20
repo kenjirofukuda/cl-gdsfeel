@@ -21,19 +21,42 @@
 	   #:final-transform
 	   #:get-bounds
 	   #:set-bounds
-	   #:damage-transform))
+	   #:damage-transform
+	   #:port-center-x
+	   #:port-center-y
+	   #:set-port-center
+	   #:reset-port-center))
 
 (in-package :cl-gdsfeel/viewport)
 
 (defclass <viewport> ()
-  ((port-width :type double-float :initform 0.0d0 :initarg :width :accessor port-width)
-   (port-height :type double-float :initform 0.0d0 :initarg :height :accessor port-height)
+  ((port-width :type integer :initform 0 :initarg :width :accessor port-width)
+   (port-height :type integer :initform 0 :initarg :height :accessor port-height)
+   (port-center-x :type integer :initform 0 :accessor port-center-x)
+   (port-center-y :type integer :initform 0 :accessor port-center-y)
    (w-scale :type double-float :initform 1.0d0 :accessor w-scale)
    (w-center-x :type double-float :initform 0.0d0 :accessor w-center-x)
    (w-center-y :type double-float :initform 0.0d0 :accessor w-center-y)
    (_transform :type (or <transform> null) :initform nil :accessor _transform)
    (_basic-transform :type (or <transform> null) :initform nil :accessor _basic-transform)
    (_transform-stack :type list :initform nil :accessor _transform-stack)))
+
+
+(defun set-port-center (vp pt)
+  (setf (port-center-x vp) (truncate (x pt)))
+  (setf (port-center-y vp) (truncate (y pt)))
+  (damage-transform vp))
+
+
+(defun reset-port-center (vp)
+  (setf (port-center-x vp) (truncate (/ (port-width vp) 2)))
+  (setf (port-center-y vp) (truncate (/ (port-height vp) 2)))
+  (damage-transform vp))
+
+
+(defun reset-world (vp)
+  (setf (w-scale vp) 1.0d0)
+  (setf (w-center vp) (p 0.0d0 0.0d0)))
 
 
 (defun damage-transform (vp)
@@ -59,15 +82,17 @@
     pt))
 
 
+(defun fitting-ratio (vp w-bounds)
+  (let ((h-ratio (/ (port-width vp) (bbox-width w-bounds)))
+	(v-ratio (/ (port-height vp) (bbox-height w-bounds))))
+    (* (min h-ratio v-ratio) 0.95)))
+
+
 (defun set-bounds (vp w-bounds)
-  (let* ((h-ratio (/ (port-width vp) (bbox-width w-bounds)))
-	 (v-ratio (/ (port-height vp) (bbox-height w-bounds)))
-	 (ratio (if (< h-ratio v-ratio) h-ratio v-ratio))
-	 (new-center (make-point (bbox-mid-x w-bounds) (bbox-mid-y w-bounds))))
-    (setf (w-center-x vp) (x new-center))
-    (setf (w-center-y vp) (y new-center))
-    (setf (w-scale vp) ratio)
-    (damage-transform vp)))
+  (reset-port-center vp)
+  (setf (w-center vp) (bbox-mid w-bounds))
+  (setf (w-scale vp) (fitting-ratio vp w-bounds))
+  (damage-transform vp))
 
 
 (defun get-bounds (vp)
@@ -81,8 +106,8 @@
 
 (defun lookup-basic-transform (vp)
   (let* ((tx1 (clem:make-affine-transformation
-	       :x-shift (/ (port-width vp) 2)
-	       :y-shift (/ (port-height vp) 2)))
+	       :x-shift (port-center-x vp)
+	       :y-shift (port-center-y vp)))
 	 (tx2 (clem:make-affine-transformation
 	       :x-scale (w-scale vp)
 	       :y-scale (w-scale vp)))

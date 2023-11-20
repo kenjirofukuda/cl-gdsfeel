@@ -22,7 +22,8 @@
 	   #:bbox-corner
 	   #:bbox-points
 	   #:points->bbox
-	   #:2point->bbox)
+	   #:2point->bbox
+	   #:bbox-mid)
   )
 
 (in-package cl-gdsfeel/geom)
@@ -133,6 +134,10 @@
 (defmethod bbox-mid-y ((bbox <bounding-box>))
   (with-slots (y-min y-max) bbox
     (/ (+ y-max y-min) 2)))
+
+
+(defmethod bbox-mid ((bbox <bounding-box>))
+  (p (bbox-mid-x bbox) (bbox-mid-y bbox)))
 
 
 (defmethod bbox-origin ((bbox <bounding-box>))
