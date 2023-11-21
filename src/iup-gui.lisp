@@ -24,6 +24,7 @@
 (defvar *element* nil)
 (defvar *viewport* nil)
 (defvar *draw-by-cd* t)
+(defvar *trace-button-event* nil)
 
 (defun main-window ()
   (cd:use-context-plus t)
@@ -44,13 +45,13 @@
 				      :action (lambda (handle)
 						(declare (ignore handle))
 						(setf *draw-by-cd* nil)
-						(iup:redraw (iup:handle "canvas") t)
+						(invalidate-canvas)
 						iup:+default+)))
 	   (item-draw-by-cd (iup:item :title "cd"
 				      :action (lambda (handle)
 						(declare (ignore handle))
 						(setf *draw-by-cd* t)
-						(iup:redraw (iup:handle "canvas") t)
+						(invalidate-canvas)
 						iup:+default+)))
 
 	   (file-menu (iup:menu (list 
@@ -82,11 +83,12 @@
 	   (canvas
 	     (iup:canvas :expand :yes
 			 :maxsize "x800"
-			 :map_cb 'canvas-map
-			 :unmap_cb 'canvas-unmap
-			 :motion_cb 'canvas-motion
-			 :button_cb 'canvas-button
-			 :action 'canvas-redraw			 
+			 :map_cb 'canvas-map-cb
+			 :resize_cb 'canvas-resize-cb
+			 :unmap_cb 'canvas-unmap-cb
+			 :motion_cb 'canvas-motion-cb
+			 :button_cb 'canvas-button-cb
+			 :action 'canvas-redraw-cb
 			 :handlename "canvas"))
 	   (hbox
 	     (iup:hbox (list
@@ -114,20 +116,7 @@
 
 
 (defun dialog-resize-cb (handle width height)
-  (declare (ignore handle))
-  (print (cons width height))
-
-  (unless (null *canvas*)
-    (multiple-value-bind (canvas-w canvas-h)
-	(cd:size *canvas*)
-
-      (unless *viewport*
-	(setf *viewport* (make-instance '<viewport> :width canvas-w
-						    :height canvas-h)))
-      (setf (port-width *viewport*) canvas-w)
-      (setf (port-height *viewport*) canvas-h)
-      (damage-transform *viewport*)))
-
+  (declare (ignore handle width))
   (mapcar (lambda (handle-name)
 	    (setf (iup:attribute (iup:handle handle-name) :maxsize)
 		  (format nil "x~d" (- height 50))) )
@@ -140,6 +129,7 @@
 	   "contents"))
   iup:+default+)
 
+
 (defun display-structure-names (library slist)
   (setf (iup:attribute (iup:handle "elementlist") 1) nil)
   (setf (iup:attribute slist 1) nil)
@@ -149,10 +139,12 @@
   (iup:refresh-children (iup:handle "dialog"))
   iup:+default+)
 
+
 (defun initial-directory ()
   (and *inform*
        (slot-value *inform* 'path)
        (uiop:pathname-parent-directory-pathname (slot-value *inform* 'path))))
+
 
 (defun open-stream-format-dialog (handle)
   (declare (ignore handle))
@@ -174,22 +166,23 @@
 
 
 (defun struclist-action-cb (self text item state)
-  (declare (ignore self item))
+  (declare (ignore self))
+  (print (list text item state))
+  (print nil)
   (when (zerop state)
-    (return-from struclist-action-cb iup:+default+))
-  ;; (print (list text item state))
+    (return-from struclist-action-cb iup:+ignore+))
   (activate-structure (child-named (library *inform*) text))
   iup:+default+)
 
 
 (defun activate-structure (structure)
   (setq *structure* structure)
+  (invalidate-canvas)
   (setf (iup:attribute (iup:handle "elementlist") 1) nil)
   (loop for each in (coerce (elements structure) 'list)
 	for i from 1
 	do (setf (iup:attribute (iup:handle "elementlist") i)
-		 (format nil "~s" each)))
-  (iup:redraw (iup:handle "canvas") t))
+		 (format nil "~s" each))))
 
 
 (defun elementlist-action-cb (self text item state)
@@ -203,7 +196,11 @@
 
 (defun activate-element (element)
   (setq *element* element)
-  (iup:redraw (iup:handle "canvas") t))
+  (invalidate-canvas))
+
+
+(defun invalidate-canvas ()
+  (iup:redraw (iup:handle "dialog") t))
 
 
 (defgeneric ad/stroke (element canvas)
@@ -448,19 +445,32 @@
      (+ y-center half-height))))
 
 
-(defun canvas-motion (handle x y status)
-  (print (list :handle handle :x x :y y :status (iup:status-plist status)))
-  iup:+default+
-  )
+(defun canvas-motion-cb (handle x y status)
+  (when *trace-button-event* 
+    (print (list :handle handle :x x :y y :status (iup:status-plist status))))
+  iup:+default+)
 
 
-(defun canvas-button (handle button pressed x y status)
-  (print (list :handle handle :button button :pressed pressed :x x :y y :status (iup:status-plist status)))
-  iup:+default+
-  )
+(defun canvas-button-cb (handle button pressed x y status)
+  (when *trace-button-event* 
+    (print (list :handle handle :button button :pressed pressed
+		 :x x :y y :status (iup:status-plist status))))
+  iup:+default+)
 
 
-(defun canvas-redraw (handle x y)
+(defun canvas-resize-cb (handle width height)
+  (declare (ignore handle))
+  (print (cons width height))
+  (unless *viewport*
+    (setf *viewport* (make-instance '<viewport> :width width
+						:height height)))
+  (setf (port-width *viewport*) width)
+  (setf (port-height *viewport*) height)
+  (damage-transform *viewport*)  
+  iup:+default+)
+
+
+(defun canvas-redraw-cb (handle x y)
   (declare (ignore handle x y))
   (cd:activate *canvas*)
   (draw-structure *structure* *canvas*)
@@ -469,13 +479,13 @@
   iup:+default+)
 
 
-(defun canvas-map (handle)
+(defun canvas-map-cb (handle)
   (setf *canvas* (cd:create-canvas
 		  (iup-cd:context-iup-dbuffer-rgb) handle))
   iup:+default+)
 
 
-(defun canvas-unmap (handle)
+(defun canvas-unmap-cb (handle)
   (declare (ignore handle))
   (cd:kill *canvas*)
   iup:+default+)
