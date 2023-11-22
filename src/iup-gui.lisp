@@ -98,7 +98,8 @@
 		       :handlename "contents"
 		       :expandchildren :no))
 	   (statusbar
-	     (iup:hbox (list (iup:frame (iup:label :expand :horizontal)))))
+	     (iup:hbox (list (iup:frame (iup:label :expand :horizontal
+						   :handlename "statusbar")))))
 	   (vbox
              (iup:vbox (list hbox statusbar)
 		       :gap "5"
@@ -113,6 +114,10 @@
       (setf (iup:handle "menu") menu)
       (iup:show dialog)
       (iup:main-loop))))
+
+
+(defun set-status (msg)
+  (setf (iup:attribute (iup:handle "statusbar") :title) msg))
 
 
 (defun dialog-resize-cb (handle width height)
@@ -200,7 +205,8 @@
 
 
 (defun invalidate-canvas ()
-  (iup:redraw (iup:handle "dialog") t))
+  #-windows (iup:redraw (iup:handle "dialog") t) ;; bug fix
+  #+windows (iup:redraw (iup:handle "canvas") t))
 
 
 (defgeneric ad/stroke (element canvas)
@@ -407,8 +413,7 @@
   (setf (cd:mark-type canvas) :mark-star)
   (mark-world canvas (p 0 0))
   (setf (cd:mark-type canvas) :mark-hollow-circle)
-  (mark-world-points canvas (bbox-points (data-bbox structure)))
-  )
+  (mark-world-points canvas (bbox-points (data-bbox structure))))
 
 
 (defun draw-structure (structure canvas)
@@ -420,9 +425,8 @@
 (defun draw-prototype (canvas)
   (cd:line canvas 0 0 (port-width *viewport*) (port-height *viewport*))
   (if *structure*
-      (cd:line canvas 0 0 (port-center-x *viewport*) (port-center-y *viewport*))
-      )
-  )
+      (cd:line canvas 0 0 (port-center-x *viewport*) (port-center-y *viewport*))))
+
 
 (defun min-max-bounds-to-fit-canvas (bounds width height)
   (let* ((xmin (aref bounds 0 0))
@@ -445,9 +449,19 @@
      (+ y-center half-height))))
 
 
+(defun cd-point (x y)
+  (p x (truncate (cd:invert-y-axis *canvas* y))))
+
+
 (defun canvas-motion-cb (handle x y status)
   (when *trace-button-event* 
     (print (list :handle handle :x x :y y :status (iup:status-plist status))))
+  (let ((cp (cd-point x y)))
+    (set-status (with-output-to-string (s)
+		  (format s "(H: ~5d, V: ~5d)" (x cp) (y cp))
+		  (unless (null *viewport*)
+		    (let ((wp (device->world *viewport* cp)))
+		      (format s "   (X: ~10,4f, Y: ~10,4f)" (x wp) (y wp)))))))
   iup:+default+)
 
 
@@ -540,10 +554,7 @@
   (unless (or (null *viewport*) (null *canvas*))
     (cd:activate *canvas*)
     (setf (cd:mark-type *canvas*) :mark-plus)
-    (cd:flush *canvas*)
-
-    )
-  )
+    (cd:flush *canvas*)))
 
 (start-gds-thread)
 
