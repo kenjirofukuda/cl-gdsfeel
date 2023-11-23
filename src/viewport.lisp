@@ -25,7 +25,8 @@
 	   #:port-center-x
 	   #:port-center-y
 	   #:set-port-center
-	   #:reset-port-center))
+	   #:reset-port-center
+	   #:with-transform))
 
 (in-package :cl-gdsfeel/viewport)
 
@@ -125,7 +126,7 @@
 
 (defun lookup-final-transform (vp)
   (let ((tx (basic-transform vp)))
-    (dolist (m (_transform-stack vp))
+    (dolist (m (reverse (_transform-stack vp)))
       (setf tx (clem:m* tx m)))
     tx))
 
@@ -149,6 +150,10 @@
 	(setf (_transform-stack vp) (cdr (_transform-stack vp)))
 	(damage-transform vp)
 	result)))
+
+
+(defmacro with-transform (vp tx &body do-list)
+  `(progn (push-transform ,vp ,tx) ,@do-list (pop-transform ,vp)))
 
 
 (defmethod bounds ((viewport <viewport>) (w-bounds <bounding-box>) ) )

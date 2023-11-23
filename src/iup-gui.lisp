@@ -324,6 +324,11 @@
 				   cd:+blue+
 				   cd:+black+))
   (ad/stroke-ref-cd element canvas)
+
+  (push-transform *viewport* (lookup-affine-transform element))
+  (stroke-structure (resolved element) canvas #'ad/stroke-cd)
+  (pop-transform *viewport*)
+  
   (setf (cd:foreground canvas) cd:+magenta+)
   (let ((b (world->device *viewport* (data-bbox element))))
     (cd:rect canvas (x-min b) (x-max b) (y-min b) (y-max b))))
