@@ -6,6 +6,7 @@
   (:use #:cl
 	#:alexandria
 	#:cl-geometry2
+	#:cl-colors2
 	#:cl-gdsfeel/geom
 	#:cl-gdsfeel/viewport
 	#:cl-gdsfeel/model
@@ -25,6 +26,7 @@
 (defvar *viewport* nil)
 (defvar *draw-by-cd* t)
 (defvar *trace-button-event* nil)
+(defvar *layer-color-assoc* nil)
 
 (defun main-window ()
   (cd:use-context-plus t)
@@ -166,6 +168,7 @@
 			  (format nil "Selected ~A" selected-path))
 	     (when selected-path
 	       (handle-inform (pathname selected-path))
+	       (setf *layer-color-assoc* (allocate-layer-colors (library *inform*) 'rgb->cd-color))
 	       (display-structure-names
 		(library *inform*) (iup:handle "struclist")))))
       (iup:destroy dialog)))
@@ -251,6 +254,10 @@
   (ad/stroke-coords (coords element)
 		    canvas
 		    :path-mode-closed-lines))
+
+
+(defmethod ad/stroke-cd :before ((element <primitive>) canvas)
+  (setf (cd:foreground canvas) (layer-color (layer element))))
 
 
 (defmethod ad/stroke-cd ((element <boundary>) canvas)
@@ -388,7 +395,7 @@
 
 (defun draw-structure-cd (structure canvas)
   ;; (print "draw-structure>>")
-  (setf (cd:background canvas) cd:+white+)
+  (setf (cd:background canvas) cd:+black+)
   (cd:clear canvas)
   (when (null structure)
     (return-from draw-structure-cd))
@@ -513,9 +520,46 @@
     (main-window)))
 
 
+(defun my/range (start end)
+  (loop for i from start below end collect i))
+
+
+(defun color-wheel (this-many sat bri hue)
+  (let ((step (/ 360 (max this-many 1))))
+    (mapcar (lambda (i) (hsv (+ hue (* i step)) sat bri))
+	    (my/range 0 this-many))))
+
+
+(defun zip-cons (xs ys) (mapcar #'cons xs ys))
+
+
+(defun unit->255 (unit)
+  (truncate (* 255 unit)))
+
+
+(defun rgb->cd-color (rgb-color)
+  (cd:encode-color (unit->255 (rgb-red rgb-color))
+		   (unit->255 (rgb-green rgb-color))
+		   (unit->255 (rgb-blue rgb-color))))
+
+
+(defun allocate-layer-colors (lib &optional (convertor 'identity))
+  (let* ((layers (used-layer-numbers lib))
+	 (colors (mapcar #'as-rgb (color-wheel (length layers) 0.7 1.0 0))))
+    (zip-cons layers (mapcar (lambda (v) (funcall convertor v)) colors))))
+
+
+(defun layer-color (n)
+  (let ((pair (assoc n *layer-color-assoc*)))
+    (if pair
+	(cdr pair)
+	cd:+white+)))
+
+
 (defun main (&rest args)
   (declare (ignore args))
   (princ "Hage"))
+
 
 (defun print-thread-info ()
   (let* ((curr-thread (bt:current-thread))
@@ -526,9 +570,11 @@
     (format t "All threads:~% ~{~a~%~}~%" all-threads))
   nil)
 
+
 (defun start-gds-thread ()
   (bt:make-thread
    (lambda () (entry-point)) :name "gds"))
+
 
 (defun quit-gds-thread ()
   (dolist (each (bt:all-threads))

@@ -80,7 +80,8 @@
    :path-outline-coords
    :calc-transform
    :used-layer-numbers
-   :depth-info)
+   :depth-info
+   :<primitive>)
   )
 
 
