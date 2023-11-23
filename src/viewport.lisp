@@ -16,8 +16,6 @@
 	   #:basic-transform
 	   #:world->device
 	   #:device->world
-	   #:pop-transform
-	   #:push-transform
 	   #:final-transform
 	   #:get-bounds
 	   #:set-bounds
@@ -152,8 +150,16 @@
 	result)))
 
 
-(defmacro with-transform (vp tx &body do-list)
-  `(progn (push-transform ,vp ,tx) ,@do-list (pop-transform ,vp)))
+(defun call-with-transform (vp tx func)
+  (push-transform vp tx) 
+  (unwind-protect
+       (progn
+	 (funcall func))
+    (pop-transform vp)))
+
+
+(defmacro with-transform (vp tx &body body)
+  `(call-with-transform ,vp ,tx #'(lambda () ,@body)))
 
 
 (defmethod bounds ((viewport <viewport>) (w-bounds <bounding-box>) ) )

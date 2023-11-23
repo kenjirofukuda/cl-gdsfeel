@@ -325,9 +325,8 @@
 				   cd:+black+))
   (ad/stroke-ref-cd element canvas)
 
-  (push-transform *viewport* (lookup-affine-transform element))
-  (stroke-structure (resolved element) canvas #'ad/stroke-cd)
-  (pop-transform *viewport*)
+  (with-transform *viewport* (lookup-affine-transform element)
+    (stroke-structure (resolved element) canvas #'ad/stroke-cd))
   
   (setf (cd:foreground canvas) cd:+magenta+)
   (let ((b (world->device *viewport* (data-bbox element))))
