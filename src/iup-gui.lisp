@@ -44,15 +44,11 @@
 	   (item-draw-by-wd (iup:item :title "wd"
 				      :action (lambda (handle)
 						(declare (ignore handle))
-						(setf *draw-by-cd* nil)
-						(invalidate-canvas)
-						iup:+default+)))
+						(set-draw-by-cd nil))))
 	   (item-draw-by-cd (iup:item :title "cd"
 				      :action (lambda (handle)
 						(declare (ignore handle))
-						(setf *draw-by-cd* t)
-						(invalidate-canvas)
-						iup:+default+)))
+						(set-draw-by-cd t))))
 
 	   (file-menu (iup:menu (list 
 				 item-open
@@ -114,6 +110,12 @@
       (setf (iup:handle "menu") menu)
       (iup:show dialog)
       (iup:main-loop))))
+
+
+(defun set-draw-by-cd (bool)
+  (setf *draw-by-cd* bool)
+  (invalidate-canvas)
+  iup:+default+)
 
 
 (defun set-status (msg)
@@ -233,25 +235,6 @@
      points)))
 
 
-(defun ad/path-outline-coords (coords path-width pathtype)
-  (let* ((path (paths:make-simple-path coords))
-	 (outline (paths:stroke-path
-		   path
-		   path-width
-		   :caps (case pathtype
-			   (0
-			    :butt)
-			   (1
-			    :round)
-			   (2
-			    :square)
-			   (t
-			    :butt))
-		   :joint :miter
-		   :inner-joint :miter)))
-    (coerce (paths::path-knots (if (listp outline) (car outline) outline)) 'list)))
-
-
 (defmethod ad/stroke (element canvas)
   (ad/stroke-coords (coords element)
 		    canvas
@@ -282,7 +265,7 @@
 		    canvas
 		    :path-mode-open-lines)
   ;; stroke path outline
-  (ad/stroke-coords (ad/path-outline-coords
+  (ad/stroke-coords (path-outline-coords
 		     (coords element)
 		     (path-width element)
 		     (pathtype element)) 
@@ -296,7 +279,7 @@
 		    canvas
 		    :path-mode-open-lines)
   ;; stroke path outline
-  (ad/stroke-points (ad/path-outline-coords
+  (ad/stroke-points (path-outline-coords
 		     (coords element)
 		     (path-width element)
 		     (pathtype element)) 
@@ -488,7 +471,7 @@
   (declare (ignore handle x y))
   (cd:activate *canvas*)
   (draw-structure *structure* *canvas*)
-  (draw-prototype *canvas*)
+;;  (draw-prototype *canvas*)
   (cd:flush *canvas*)
   iup:+default+)
 

@@ -76,7 +76,8 @@
    :<aref>
    
    :points
-   )
+   :path-outline-coords
+   :calc-transform)
   )
 
 
@@ -225,6 +226,25 @@
   (mapcar #'as-point (coords element)))
 
 
+(defun path-outline-coords (coords path-width pathtype)
+  (let* ((path (paths:make-simple-path coords))
+	 (outline (paths:stroke-path
+		   path
+		   path-width
+		   :caps (case pathtype
+			   (0
+			    :butt)
+			   (1
+			    :round)
+			   (2
+			    :square)
+			   (t
+			    :butt))
+		   :joint :miter
+		   :inner-joint :miter)))
+    (coerce (paths::path-knots (if (listp outline) (car outline) outline)) 'list)))
+
+
 (defgeneric calc-bounds-2a (object))
 
 
@@ -246,6 +266,20 @@
 
 (defmethod calc-bbox ((element <element>))
   (points->bbox (points element)))
+
+
+(defmethod calc-bbox ((element <path>))
+  (points->bbox (path-outline-coords
+		 (coords element)
+		 (path-width element)
+		 (pathtype element))))
+
+
+(defmethod calc-bbox ((element <sref>))
+  (let* ((ref-bbox (data-bbox (resolved element)))
+	 (tx (lookup-affine-transform element)))
+    (points->bbox (mapcar (lambda (each) (transform-point tx each))
+			  (bbox-points ref-bbox)))))
 
 
 (defmethod calc-bounds-2a ((structure <structure>))
@@ -366,7 +400,7 @@
 
 
 (defmethod resolved ((sref <sref>))
-  (child-named (structure sref) (refname sref)))
+  (child-named (library (structure sref)) (refname sref)))
 
 
 (defmethod children ((container <element>))

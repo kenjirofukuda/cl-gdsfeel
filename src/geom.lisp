@@ -23,7 +23,8 @@
 	   #:bbox-points
 	   #:points->bbox
 	   #:2point->bbox
-	   #:bbox-mid)
+	   #:bbox-mid
+	   #:transform-point)
   )
 
 (in-package cl-gdsfeel/geom)
@@ -158,7 +159,11 @@
 	  (p x-max y-min))))
 
 
-(defclass <transform> (clem:affine-transformation) ())
+(defun transform-point (tx pt)
+  (multiple-value-bind (xd yd)
+      (clem:transform-coord (x pt) (y pt) tx)
+    (p xd yd)))
+
 
 
 (defun sample-bounding-box ()
