@@ -1,5 +1,6 @@
 (defpackage cl-gdsfeel/model
   (:use #:cl
+	#:alexandria
 	#:local-time
 	#:clem
 	#:cl-geometry2
@@ -77,7 +78,9 @@
    
    :points
    :path-outline-coords
-   :calc-transform)
+   :calc-transform
+   :used-layer-numbers
+   :depth-info)
   )
 
 
@@ -386,6 +389,22 @@
    :test 'equalp)) 
 
 
+(defun as-sorted-uniq (lst)
+  (sort (remove-duplicates lst) #'<))
+
+
+(defmethod used-layer-numbers ((structure <structure>))
+  (as-sorted-uniq 
+   (mapcar (lambda (each) (layer each))
+	   (remove-if-not #'leaf-p (elements structure)))))
+
+
+(defmethod used-layer-numbers ((library <library>))
+  (as-sorted-uniq (flatten (mapcar (lambda (s)
+				     (used-layer-numbers s))
+				   (structures library)))))
+
+
 ;; (defmethod print-tree ((library <library>))
 ;;   (dolist (each (no-leaf-children library))
 ;;     ))
@@ -444,6 +463,13 @@
           #'(lambda ()
               (setq max-depth (max max-depth (depth walker)))))
     max-depth))
+
+
+(defun depth-info (library)
+  (sort (mapcar (lambda (s)
+		  (cons (name s) (depth s)))
+		(structures library))
+	(lambda (a b) (> (cdr a) (cdr b)))))
 
 
 (defmethod referenced-structures ((structure <structure>))
