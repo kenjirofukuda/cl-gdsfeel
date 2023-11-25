@@ -18,8 +18,8 @@
 (in-package :cl-gdsfeel/iup-gui)
 
 (define-constant +default-window-title+ "GdsFeel" :test #'string=)
-(defparameter *canvas* nil)
 
+(defvar *canvas* nil)
 (defvar *inform* nil)
 (defvar *structure* nil)
 (defvar *element* nil)
@@ -265,19 +265,8 @@
   #+windows (iup:redraw (iup:handle "canvas") t))
 
 
-(defgeneric ad/stroke (element canvas)
-  (:documentation "stroke by wd canvas"))
-
-
 (defgeneric ad/stroke-cd (element canvas)
   (:documentation "stroke by cd canvas"))
-
-
-(defun ad/stroke-coords (coords canvas path-mode)
-  (cd:with-vertices (canvas path-mode)
-    (mapcar
-     (lambda (p) (wd:vertex canvas (car p) (cdr p)))
-     coords)))
 
 
 (defun ad/stroke-points (points canvas path-mode)
@@ -289,22 +278,10 @@
      points)))
 
 
-(defmethod ad/stroke (element canvas)
-  (ad/stroke-coords (coords element)
-		    canvas
-		    :path-mode-open-lines))
-
-
 (defmethod ad/stroke-cd (element canvas)
   (ad/stroke-points (points element)
 		    canvas
 		    :path-mode-open-lines))
-
-
-(defmethod ad/stroke ((element <boundary>) canvas)
-  (ad/stroke-coords (coords element)
-		    canvas
-		    :path-mode-closed-lines))
 
 
 (defmethod ad/stroke-cd :before ((element <primitive>) canvas)
@@ -313,20 +290,6 @@
 
 (defmethod ad/stroke-cd ((element <boundary>) canvas)
   (ad/stroke-points (points element)
-		    canvas
-		    :path-mode-closed-lines))
-
-
-(defmethod ad/stroke ((element <path>) canvas)
-  ;; stroke path center
-  (ad/stroke-coords (coords element)
-		    canvas
-		    :path-mode-open-lines)
-  ;; stroke path outline
-  (ad/stroke-coords (path-outline-coords
-		     (coords element)
-		     (path-width element)
-		     (pathtype element)) 
 		    canvas
 		    :path-mode-closed-lines))
 
@@ -345,11 +308,6 @@
 		    :path-mode-closed-lines))
 
 
-(defun ad/stroke-ref (element canvas) 
-  (let ((origin (car (coords element))))
-    (wd:mark canvas (car origin) (cdr origin))))
-
-
 (defun mark-world (canvas wpt)
   (let ((dp (world->device *viewport* (as-point wpt))))
     (cd:mark canvas (x dp) (y dp))))
@@ -364,139 +322,34 @@
   (mark-world canvas (first (points element))))
 
 
-
-(defmethod ad/stroke ((element <sref>) canvas)
-  (setf (cd:mark-type canvas) :mark-hollow-diamond)
-  (setf (cd:foreground canvas) (if (transform-effective-p element)
-				   cd:+blue+
-				   cd:+black+))
-  (ad/stroke-ref element canvas)
-  (setf (cd:foreground canvas) cd:+magenta+)
-  (let ((b (data-bounds element)))
-    (wd:rect canvas (aref b 0 0) (aref b 1 0) (aref b 0 1) (aref b 1 1))))
-
-
 (defmethod ad/stroke-cd ((element <sref>) canvas)
-  (setf (cd:mark-type canvas) :mark-hollow-diamond)
-  (setf (cd:foreground canvas) (if (transform-effective-p element)
-				   cd:+blue+
-				   cd:+black+))
-  (ad/stroke-ref-cd element canvas)
-
   (with-transform *viewport* (lookup-affine-transform element)
-    (stroke-structure (resolved element) canvas #'ad/stroke-cd))
-  
-  (setf (cd:foreground canvas) cd:+magenta+)
-  (let ((b (world->device *viewport* (data-bbox element))))
-    (cd:rect canvas (x-min b) (x-max b) (y-min b) (y-max b))))
-
-
-(defmethod ad/stroke ((element <aref>) canvas)
-  (setf (cd:mark-type canvas) :mark-x)
-  (setf (cd:foreground canvas) (if (transform-effective-p element)
-				   cd:+blue+
-				   cd:+black+))
-  (ad/stroke-ref element canvas))
+    (stroke-structure (resolved element) canvas #'ad/stroke-cd)))
 
 
 (defmethod ad/stroke-cd ((element <aref>) canvas)
-  (setf (cd:mark-type canvas) :mark-x)
-  (setf (cd:foreground canvas) (if (transform-effective-p element)
-				   cd:+blue+
-				   cd:+black+))
-
   (dolist (each (lookup-repeated-transform element)) 
     (with-transform *viewport* each
-      (stroke-structure (resolved element) canvas #'ad/stroke-cd)))
-
-  (ad/stroke-ref-cd element canvas))
+      (stroke-structure (resolved element) canvas #'ad/stroke-cd))))
 
 
-(defun ad/extent (element)
-  (let ((bounds (data-bounds element)))
-    (cons 
-     (- (aref bounds 1 0)
-	(aref bounds 0 0))
-     (- (aref bounds 1 1)
-	(aref bounds 0 1)))))
-
-
-(defun stroke-structure (structure canvas &optional (stroke-proc #'ad/stroke))
+(defun stroke-structure (structure canvas &optional (stroke-proc #'ad/stroke-cd))
   (loop for each in (coerce (children structure) 'list)
-	do (setf (cd:foreground canvas)
-		 (if (null *element*)
-		     cd:+black+
-		     (if (eq *element* each) cd:+red+ cd:+black+)))
-	   (funcall stroke-proc each canvas)))
-
-
-(defun draw-structure-wd (structure canvas)
-  ;; (print "draw-structure>>")
-  (multiple-value-bind (canvas-w canvas-h w-mm h-mm)
-      (cd:size canvas)
-    (declare (ignore w-mm h-mm))
-    (setf (cd:background canvas) cd:+white+)
-    (cd:clear canvas)
-    (when (null structure)
-      (return-from draw-structure-wd))
-    (setf (wd:window canvas)
-	  (apply #'values
-		 (min-max-bounds-to-fit-canvas
-		  (data-bounds structure) canvas-w canvas-h)))
-    (setf (wd:viewport canvas)
-	  (values 0 (1- canvas-w) 0 (1- canvas-h)))
-    (setf (cd:foreground canvas) cd:+black+)
-    (stroke-structure structure canvas)))
+	do (funcall stroke-proc each canvas)))
 
 
 (defun draw-structure-cd (structure canvas)
-  ;; (print "draw-structure>>")
   (setf (cd:background canvas) cd:+black+)
   (cd:clear canvas)
   (when (null structure)
     (return-from draw-structure-cd))
-  (setf (cd:foreground canvas) cd:+black+)
   (set-bounds *viewport* (data-bbox structure))
-  (stroke-structure structure canvas #'ad/stroke-cd)
-  (setf (cd:mark-type canvas) :mark-circle)
-  (mark-world canvas (bbox-mid (data-bbox structure)))
-  (setf (cd:mark-type canvas) :mark-star)
-  (mark-world canvas (p 0 0))
-  (setf (cd:mark-type canvas) :mark-hollow-circle)
-  (mark-world-points canvas (bbox-points (data-bbox structure))))
+  (stroke-structure structure canvas #'ad/stroke-cd))
 
 
 (defun draw-structure (structure canvas)
-  (if (gethash 'draw-by-cd *bool-table*)
-      (draw-structure-cd structure canvas)
-      (draw-structure-wd structure canvas)))
-
-
-(defun draw-prototype (canvas)
-  (cd:line canvas 0 0 (port-width *viewport*) (port-height *viewport*))
-  (if *structure*
-      (cd:line canvas 0 0 (port-center-x *viewport*) (port-center-y *viewport*))))
-
-
-(defun min-max-bounds-to-fit-canvas (bounds width height)
-  (let* ((xmin (aref bounds 0 0))
-	 (ymin (aref bounds 0 1))
-	 (xmax (aref bounds 1 0))
-	 (ymax (aref bounds 1 1))
-	 (w-width (- xmax xmin))
-	 (w-height (- ymax ymin))
-	 (x-ratio (/ width  w-width))
-	 (y-ratio (/ height  w-height))
-	 (scaling (min x-ratio y-ratio))
-	 (half-width (/  (/ width scaling) 2.0))
-	 (half-height (/  (/ height scaling) 2.0))
-	 (x-center (+ xmin (/ w-width 2)))
-	 (y-center (+ ymin (/ w-height 2))))
-    (list
-     (- x-center half-width)
-     (+ x-center half-width)
-     (- y-center half-height)
-     (+ y-center half-height))))
+  (when (gethash 'draw-by-cd *bool-table*)
+    (draw-structure-cd structure canvas)))
 
 
 (defun cd-point (x y)
@@ -538,7 +391,6 @@
   (declare (ignore handle x y))
   (cd:activate *canvas*)
   (draw-structure *structure* *canvas*)
-;;  (draw-prototype *canvas*)
   (cd:flush *canvas*)
   iup:+default+)
 
@@ -637,13 +489,3 @@
     (let ((name (bt:thread-name each)))
       (if (string-equal name "gds")
 	  (bt:destroy-thread each)))))
-
-
-(defun mark (x y)
-  (unless (or (null *viewport*) (null *canvas*))
-    (cd:activate *canvas*)
-    (setf (cd:mark-type *canvas*) :mark-plus)
-    (cd:flush *canvas*)))
-
-(start-gds-thread)
-
