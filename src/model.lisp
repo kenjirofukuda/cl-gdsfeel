@@ -14,7 +14,6 @@
    :children
    :resolved
    :resolved-children
-   :data-bounds
    :data-bbox
    
    :<named-container>
@@ -106,20 +105,10 @@
 
 
 (defclass <tree-node> ()
-  ((cached-data-bounds :initform nil :accessor cached-data-bounds)
-   (cached-bbox :initform nil :accessor cached-bbox)))
-
-
-(defgeneric data-bounds (object))
+  ((cached-bbox :initform nil :accessor cached-bbox)))
 
 
 (defgeneric data-bbox (object))
-
-
-(defmethod data-bounds ((object <tree-node>))
-  (unless (cached-data-bounds object)
-    (setf (cached-data-bounds object) (calc-bounds-2a object)))
-  (cached-data-bounds object))
 
 
 (defmethod data-bbox ((object <tree-node>))
@@ -261,23 +250,7 @@
     (coerce (paths::path-knots (if (listp outline) (car outline) outline)) 'list)))
 
 
-(defgeneric calc-bounds-2a (object))
-
-
 (defgeneric calc-bbox (object))
-
-
-(defmethod calc-bounds-2a ((element <element>))
-  (let* ((coords (coords-2a element))
-	 (min (aops:margin
-	       (lambda (col)
-		 (reduce #'min col))
-	       coords 0))
-	 (max (aops:margin
-	       (lambda (col)
-		 (reduce #'max col))
-	       coords 0)))
-    (aops:combine (vector min max))))
 
 
 (defmethod calc-bbox ((element <element>))
@@ -296,26 +269,6 @@
 	 (tx (lookup-affine-transform element)))
     (points->bbox (mapcar (lambda (each) (transform-point tx each))
 			  (bbox-points ref-bbox)))))
-
-
-(defmethod calc-bounds-2a ((structure <structure>))
-  (let ((bounds nil)
-	(xmins '())
-	(ymins '())
-	(xmaxs '())
-	(ymaxs '()))    
-    (loop for each in (children structure) 
-	  do (setq bounds (data-bounds each))
-	     (push (aref bounds 0 0) xmins)
-	     (push (aref bounds 0 1) ymins)
-	     (push (aref bounds 1 0) xmaxs)
-	     (push (aref bounds 1 1) ymaxs))
-    (make-array '(2 2) :initial-contents
-		(list 
-		 (list  (apply #'min xmins)
-			(apply #'min ymins))
-		 (list  (apply #'max xmaxs)
-			(apply #'max ymaxs))))))
 
 
 (defmethod calc-bbox ((structure <structure>))
