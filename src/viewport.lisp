@@ -24,7 +24,8 @@
 	   #:port-center-y
 	   #:set-port-center
 	   #:reset-port-center
-	   #:with-transform))
+	   #:with-transform
+	   #:device-pixel-convertor))
 
 (in-package :cl-gdsfeel/viewport)
 
@@ -38,7 +39,8 @@
    (w-center-y :type double-float :initform 0.0d0 :accessor w-center-y)
    (_transform :type (or <transform> null) :initform nil :accessor _transform)
    (_basic-transform :type (or <transform> null) :initform nil :accessor _basic-transform)
-   (_transform-stack :type list :initform nil :accessor _transform-stack)))
+   (_transform-stack :type list :initform nil :accessor _transform-stack)
+   (device-pixel-convertor :type symbol :initform 'identity :accessor device-pixel-convertor)))
 
 
 (defun set-port-center (vp pt)
@@ -168,7 +170,8 @@
 (defmethod world->device ((vp <viewport>) (pt <point>))
   (multiple-value-bind (xd yd)
       (clem:transform-coord (x pt) (y pt) (final-transform vp))
-    (p xd yd)))
+    (p (funcall (device-pixel-convertor vp) xd)
+       (funcall (device-pixel-convertor vp) yd))))
 
 
 (defmethod world->device ((vp <viewport>) (bbox <bounding-box>))

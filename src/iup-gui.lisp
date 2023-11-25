@@ -24,12 +24,17 @@
 (defvar *structure* nil)
 (defvar *element* nil)
 (defvar *viewport* nil)
-(defvar *draw-by-cd* t)
 (defvar *trace-button-event* nil)
 (defvar *layer-color-assoc* nil)
+(defvar *bool-keys*
+  '(draw-by-cd
+    pixel-perfect))
+(defvar *bool-table* (make-hash-table))
+
 
 (defun main-window ()
   (cd:use-context-plus t)
+  (setup-bool-table)
   (iup:with-iup ()
     (let* (
 	   (item-open (iup:item :title (format nil "&Open...~CCtrl+O" #\Tab)
@@ -43,14 +48,10 @@
 				:action (lambda (handle)
 					  (declare (ignore handle))
 					  iup:+close+)))
-	   (item-draw-by-wd (iup:item :title "wd"
-				      :action (lambda (handle)
-						(declare (ignore handle))
-						(set-draw-by-cd nil))))
-	   (item-draw-by-cd (iup:item :title "cd"
-				      :action (lambda (handle)
-						(declare (ignore handle))
-						(set-draw-by-cd t))))
+	   (item-draw-by-cd (iup:item :title "draw by cd"
+				      :autotoggle :yes
+				      :value :on
+				      :action 'draw-by-cd-cb))
 
 	   (file-menu (iup:menu (list 
 				 item-open
@@ -58,9 +59,10 @@
 				 (iup:separator)
 				 item-exit)))
 	   (debug-menu (iup:menu (list 
-				  item-draw-by-wd
 				  item-draw-by-cd
-				  (iup:separator))))   
+				  (iup:separator)
+				  (make-bool-item 'pixel-perfect)
+				  )))
 	   (sub-menu-file (iup:sub-menu file-menu :title "&File"))
 	   (sub-menu-debug (iup:sub-menu debug-menu :title "&Debug"))
 	   (menu (iup:menu (list
@@ -114,8 +116,38 @@
       (iup:main-loop))))
 
 
-(defun set-draw-by-cd (bool)
-  (setf *draw-by-cd* bool)
+(defun setup-bool-table ()
+  (dolist (each *bool-keys*)
+    (setf (gethash each *bool-table*) nil))
+  (setf (gethash 'draw-by-cd *bool-table*) t))
+
+
+(defun make-bool-item (sym &optional (initial :off))
+  (let* ((str (string-downcase (symbol-name sym)))
+	 (cb-name (read-from-string (concatenate 'string str "-cb")))
+	 (title (substitute #\space #\- str)))
+    (iup:item :title title
+	      :autotoggle :yes
+	      :value initial
+	      :action cb-name)))
+
+
+(defun item-checked (handle)
+  (string= (iup:attribute handle :value) "ON"))
+
+
+(defun draw-by-cd-cb (handle)
+  (setf (gethash 'draw-by-cd *bool-table*) (item-checked handle))
+  (invalidate-canvas)
+  iup:+default+)
+
+
+(defun pixel-perfect-cb (handle)
+  (setf (gethash 'pixel-perfect *bool-table*) (item-checked handle))
+  (setf (device-pixel-convertor *viewport*)
+	(if (gethash 'pixel-perfect *bool-table*)
+	    'truncate
+	    'identity))
   (invalidate-canvas)
   iup:+default+)
 
@@ -411,7 +443,7 @@
 
 
 (defun draw-structure (structure canvas)
-  (if *draw-by-cd*
+  (if (gethash 'draw-by-cd *bool-table*)
       (draw-structure-cd structure canvas)
       (draw-structure-wd structure canvas)))
 
