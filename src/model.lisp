@@ -231,6 +231,8 @@
 
 
 (defun path-outline-coords (coords path-width pathtype)
+  (when (zerop path-width)
+    (return-from path-outline-coords coords))
   (let* ((path (paths:make-simple-path coords))
 	 (outline (paths:stroke-path
 		   path
