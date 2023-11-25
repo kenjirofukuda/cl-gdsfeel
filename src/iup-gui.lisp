@@ -70,19 +70,20 @@
 			    sub-menu-debug)))
 	   (struclist
 	     (iup:list :expand :yes 
-		       :maxsize "x800"
+		       ;;:maxsize "x800"
 		       :scrollbar :yes
 		       :action 'struclist-action-cb
 		       :handlename "struclist"))
 	   (elementlist
 	     (iup:list :expand :yes 
-		       :maxsize "x800"
+		       ;;:maxsize "x800"
 		       :scrollbar :yes
 		       :action 'elementlist-action-cb
 		       :handlename "elementlist"))
 	   (canvas
 	     (iup:canvas :expand :yes
-			 :maxsize "x800"
+			 ;;:maxsize "x800"
+			 :minsize "512x342"
 			 :map_cb 'canvas-map-cb
 			 :resize_cb 'canvas-resize-cb
 			 :unmap_cb 'canvas-unmap-cb
@@ -109,7 +110,7 @@
 			      :size "halfxhalf"
 			      :menu "menu"
 			      :handlename "dialog"
-			      :shrink :no
+			      :shrink :yes
 			      :resize_cb 'dialog-resize-cb)))
       (setf (iup:handle "menu") menu)
       (iup:show dialog)
@@ -158,6 +159,7 @@
 
 (defun dialog-resize-cb (handle width height)
   (declare (ignore handle width))
+
   (mapcar (lambda (handle-name)
 	    (setf (iup:attribute (iup:handle handle-name) :maxsize)
 		  (format nil "x~d" (- height 50))) )
@@ -224,7 +226,24 @@
   (loop for each in (coerce (elements structure) 'list)
 	for i from 1
 	do (setf (iup:attribute (iup:handle "elementlist") i)
-		 (format nil "~s" each))))
+		 (display-name each))))
+
+
+(defmethod display-name ((el <element>))
+  (let ((s (symbol-name (type-of el))))
+    (subseq s 1 (1- (length s)))))
+
+
+(defmethod display-name ((el <named-container>))
+  (format nil "~a (\"~a\")" (call-next-method el) (name el)))
+
+
+(defmethod display-name ((el <sref>))
+  (format nil "~a (\"~a\")" (call-next-method el) (refname el)))
+
+
+(defmethod display-name ((el <text>))
+  (format nil "~a (\"~a\")" (call-next-method el) (contents el)))
 
 
 (defun elementlist-action-cb (self text item state)
