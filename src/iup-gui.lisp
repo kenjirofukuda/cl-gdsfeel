@@ -404,6 +404,11 @@
   (setf (cd:foreground canvas) (if (transform-effective-p element)
 				   cd:+blue+
 				   cd:+black+))
+
+  (dolist (each (lookup-repeated-transform element)) 
+    (with-transform *viewport* each
+      (stroke-structure (resolved element) canvas #'ad/stroke-cd)))
+
   (ad/stroke-ref-cd element canvas))
 
 

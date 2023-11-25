@@ -4,7 +4,11 @@
 	#:flexi-streams
 	#:array-operations
 	#:local-time
+	#:cl-geometry2
+	#:cl-gdsfeel/geom
 	#:cl-gdsfeel/model)
+  (:import-from #:clem
+		#:invert-matrix)
   (:import-from #:osicat-posix
 		#:stat #:stat-size)
   (:shadowing-import-from #:alexandria
@@ -257,8 +261,14 @@
           (_xy
            (setf (xy element) (map 'list
 				   (lambda (x) (fix-ce-value (* uunit x) uunit))
-				   body-data)))
-          
+				   body-data))
+	   (when (eq (type-of element) '<aref>)
+	     (let* ((mat (clem:invert-matrix (lookup-affine-transform element)))
+		    (col-point (transform-point mat (second (points element))))
+		    (row-point (transform-point mat (third (points element)))))
+	       (setf (x-step element) (fix-ce-value (/ (x col-point) (column-count element)) uunit))
+	       (setf (y-step element) (fix-ce-value (/ (y row-point) (row-count element)) uunit)))))
+	  
           (_layer
            (setf (layer element) body-data))
           
@@ -287,6 +297,9 @@
 	   (unless (zerop body-data)
 	     (recout)))
 
+	  (_colrow
+	   (setf (column-count element) (first body-data))
+	   (setf (row-count element) (second body-data)))
 	  
           ;; ((_strans elflags strclass presentation)
           ;;  (recout)

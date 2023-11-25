@@ -51,6 +51,7 @@
    :lookup-affine-transform
    :transform-effective-p
 
+   :<primitive>
    :<element>
    
    :structure
@@ -75,13 +76,18 @@
    :refname
 
    :<aref>
+   :x-step
+   :y-step
+   :row-count
+   :column-count
    
    :points
    :path-outline-coords
    :calc-transform
    :used-layer-numbers
    :depth-info
-   :<primitive>)
+   :lookup-offsets
+   :lookup-repeated-transform)
   )
 
 
@@ -165,7 +171,11 @@
 (defclass <sref> (<reference>)
   ((refname   :type string       :initform "" :accessor refname)))
 
-(defclass <aref> (<sref>) ())
+(defclass <aref> (<sref>)
+  ((x-step :type integer :initform 0 :accessor x-step)
+   (y-step :type integer :initform 0 :accessor y-step)
+   (row-count :type integer :initform 0 :accessor row-count)
+   (column-count :type integer :initform 0 :accessor column-count)))
 
 
 (defclass <named-container> (<tree-node>)
@@ -354,6 +364,23 @@
       (setf (mref m 0 1) (- (mref m 0 1)))
       (setf (mref m 1 1) (- (mref m 1 1))))
     m))
+
+
+(defmethod lookup-offsets ((aref <aref>))
+  (flatten (loop for x-index below (column-count aref)
+		 collect (loop
+			   for y-index below (row-count aref)
+			   collect (p (* x-index (x-step aref)) (* y-index (y-step aref)))))))
+
+
+(defmethod lookup-repeated-transform ((aref <aref>))
+  (let ((tx (lookup-affine-transform aref))
+	(offsets (lookup-offsets aref)))
+    (mapcar (lambda (offset)
+	      (let ((otx (clem:make-affine-transformation :x-shift (x offset)
+							  :y-shift (y offset))))
+		(clem:m* tx otx)))
+	    offsets)))
 
 
 (defmethod child-names ((container <named-container>))
