@@ -24,7 +24,8 @@
 	   #:points->bbox
 	   #:2point->bbox
 	   #:bbox-mid
-	   #:transform-point)
+	   #:transform-point
+	   #:invert-point)
   )
 
 (in-package cl-gdsfeel/geom)
@@ -164,6 +165,23 @@
       (clem:transform-coord (x pt) (y pt) tx)
     (p xd yd)))
 
+
+(defun invert-point (tx pt)
+  (let* ((x1 (- (x pt) (mref tx 0 2)))
+	 (y1 (- (y pt) (mref tx 1 2)))
+	 (a00 (mref tx 0 0))
+	 (a01 (mref tx 0 1))
+	 (a10 (mref tx 1 0))
+	 (a11 (mref tx 1 1))
+	 (det (- (* a00 a11) (* a01 a10)))
+	 (detx 0)
+	 (dety 0))
+    (when (zerop det)
+      (return-from invert-point (p 0 0)))
+    (setq det (/ 1.0d0 det))
+    (setq detx (- (* x1 a11) (* a01 y1)))
+    (setq dety (- (* a00 y1) (* x1 a10)))
+    (p (* detx det) (* detY det))))
 
 
 (defun sample-bounding-box ()

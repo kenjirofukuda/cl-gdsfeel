@@ -263,9 +263,9 @@
 				   (lambda (x) (fix-ce-value (* uunit x) uunit))
 				   body-data))
 	   (when (eq (type-of element) '<aref>)
-	     (let* ((mat (clem:invert-matrix (lookup-affine-transform element)))
-		    (col-point (transform-point mat (second (points element))))
-		    (row-point (transform-point mat (third (points element)))))
+	     (let* ((mat (lookup-affine-transform element))
+		    (col-point (invert-point mat (second (points element))))
+		    (row-point (invert-point mat (third (points element)))))
 	       (setf (x-step element) (fix-ce-value (/ (x col-point) (column-count element)) uunit))
 	       (setf (y-step element) (fix-ce-value (/ (y row-point) (row-count element)) uunit)))))
 	  
