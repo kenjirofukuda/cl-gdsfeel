@@ -27,8 +27,7 @@
 (defvar *trace-button-event* nil)
 (defvar *layer-color-assoc* nil)
 (defvar *bool-keys*
-  '(draw-by-cd
-    pixel-perfect))
+  '(pixel-perfect))
 (defvar *bool-table* (make-hash-table))
 
 
@@ -48,19 +47,12 @@
 				:action (lambda (handle)
 					  (declare (ignore handle))
 					  iup:+close+)))
-	   (item-draw-by-cd (iup:item :title "draw by cd"
-				      :autotoggle :yes
-				      :value :on
-				      :action 'draw-by-cd-cb))
-
 	   (file-menu (iup:menu (list 
 				 item-open
 				 item-layout
 				 (iup:separator)
 				 item-exit)))
 	   (debug-menu (iup:menu (list 
-				  item-draw-by-cd
-				  (iup:separator)
 				  (make-bool-item 'pixel-perfect)
 				  )))
 	   (sub-menu-file (iup:sub-menu file-menu :title "&File"))
@@ -119,8 +111,7 @@
 
 (defun setup-bool-table ()
   (dolist (each *bool-keys*)
-    (setf (gethash each *bool-table*) nil))
-  (setf (gethash 'draw-by-cd *bool-table*) t))
+    (setf (gethash each *bool-table*) nil)))
 
 
 (defun make-bool-item (sym &optional (initial :off))
@@ -135,12 +126,6 @@
 
 (defun item-checked (handle)
   (string= (iup:attribute handle :value) "ON"))
-
-
-(defun draw-by-cd-cb (handle)
-  (setf (gethash 'draw-by-cd *bool-table*) (item-checked handle))
-  (invalidate-canvas)
-  iup:+default+)
 
 
 (defun pixel-perfect-cb (handle)
@@ -345,8 +330,7 @@
 
 
 (defun draw-structure (structure canvas)
-  (when (gethash 'draw-by-cd *bool-table*)
-    (draw-structure-cd structure canvas)))
+  (time (draw-structure-cd structure canvas)))
 
 
 (defun cd-point (x y)
