@@ -461,8 +461,15 @@
 
 
 (defun start-gds-thread ()
-  (bt:make-thread
-   (lambda () (entry-point)) :name "gds"))
+  (let* ((thread-names (mapcar (lambda (th)
+				 (bt:thread-name th))
+			       (bt:all-threads)))
+	 (targets (remove-if-not (lambda (name) (string= name "gds")) thread-names)))
+    (unless (null targets)
+      (print "gds already running")
+      (return-from start-gds-thread))
+    (bt:make-thread
+     (lambda () (entry-point)) :name "gds")))
 
 
 (defun quit-gds-thread ()
