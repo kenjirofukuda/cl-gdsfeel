@@ -47,7 +47,6 @@
    :abs-mag-p
    :abs-angle-p
    :reflected-p
-   :lookup-affine-transform
    :transform-effective-p
 
    :<primitive>
@@ -85,8 +84,9 @@
    :calc-transform
    :used-layer-numbers
    :depth-info
-   :lookup-offsets
-   :lookup-repeated-transform)
+   :ref-transform
+   :repeated-transform
+   :ref-structure)
   )
 
 
@@ -146,25 +146,38 @@
   ((datatype :type integer :initform -1 :accessor datatype)
    (layer    :type integer :initform -1 :accessor layer)))
 
+
 (defclass <boundary> (<primitive>) ())
+
 
 (defclass <path> (<primitive>)
   ((width    :type single-float :initform 0.0 :accessor path-width)
    (pathtype :type integer :initform 0 :accessor pathtype)))
 
+
 (defclass <text> (<primitive> <strans>)
   ((contents :type string :initform "" :accessor contents)))
 
-(defclass <reference> (<element> <strans>) ())
+
+(defclass <reference> (<element> <strans>)
+  ((_ref-transform
+    :type (or affine-transformation null)
+    :initform nil)))
+
 
 (defclass <sref> (<reference>)
-  ((refname   :type string       :initform "" :accessor refname)))
+  ((refname   :type string       :initform "" :accessor refname)
+   (_ref-structure :type (or null <structure>) :initform nil)))
+
 
 (defclass <aref> (<sref>)
   ((x-step :type integer :initform 0 :accessor x-step)
    (y-step :type integer :initform 0 :accessor y-step)
    (row-count :type integer :initform 0 :accessor row-count)
-   (column-count :type integer :initform 0 :accessor column-count)))
+   (column-count :type integer :initform 0 :accessor column-count)
+   (_repeated-transform
+    :type (or affine-transformation null)
+    :initform nil)))
 
 
 (defclass <named-container> (<tree-node>)
@@ -175,6 +188,7 @@
    (last-accessed
     :type timestamp :accessor last-accessed)))
 
+
 (defclass <structure> (<named-container>)
   ((library
     :type <library>
@@ -182,12 +196,7 @@
    (elements
     :type list
     :initform nil
-    :accessor elements)
-   ;; (elements
-   ;;  :type vector
-   ;;  :initform (alloc-typed-vector '<element>)
-   ;;  :accessor elements)
-   ))
+    :accessor elements)))
 
 (defclass <library> (<named-container>)
   ((user-unit
@@ -200,11 +209,6 @@
     :type list
     :initform nil
     :accessor structures)
-   ;; (structures
-   ;;  :type vector
-   ;;  :initform (alloc-typed-vector '<structure>)
-   ;;  :accessor structures)
-
    ))
 
 (defconstant +radians-per-degree+  0.017453292519943295d0)
@@ -271,9 +275,21 @@
 
 (defmethod calc-bbox ((element <sref>))
   (let* ((ref-bbox (data-bbox (resolved element)))
-	 (tx (lookup-affine-transform element)))
+	 (tx (ref-transform element)))
     (points->bbox (mapcar (lambda (each) (transform-point tx each))
 			  (bbox-points ref-bbox)))))
+
+
+(defmethod ref-transform ((element <reference>))
+  (when (null (slot-value element '_ref-transform))
+    (setf (slot-value element '_ref-transform) (lookup-affine-transform element)))
+  (slot-value element '_ref-transform))
+
+
+(defmethod repeated-transform ((element <aref>))
+  (when (null (slot-value element '_repeated-transform))
+    (setf (slot-value element '_repeated-transform) (lookup-repeated-transform element)))
+  (slot-value element '_repeated-transform))
 
 
 (defmethod calc-bbox ((structure <structure>))
@@ -332,7 +348,7 @@
 
 
 (defmethod lookup-repeated-transform ((aref <aref>))
-  (let ((tx (lookup-affine-transform aref))
+  (let ((tx (ref-transform aref))
 	(offsets (lookup-offsets aref)))
     (mapcar (lambda (offset)
 	      (let ((otx (clem:make-affine-transformation :x-shift (x offset)
@@ -406,8 +422,18 @@
   nil)
 
 
-(defmethod resolved ((sref <sref>))
+(defmethod lookup-ref-structure ((sref <sref>))
   (child-named (library (structure sref)) (refname sref)))
+
+
+(defmethod ref-structure ((sref <sref>))
+  (when (null (slot-value sref '_ref-structure))
+    (setf (slot-value sref '_ref-structure) (lookup-ref-structure sref)))
+  (slot-value sref '_ref-structure))
+
+
+(defmethod resolved ((sref <sref>))
+  (ref-structure sref))
 
 
 (defmethod children ((container <element>))
@@ -496,7 +522,6 @@
 
 
 (defmethod add-structure ((library <library>) (structure <structure>))
-  ;;  (vector-push-extend structure (structures library))
   (push structure (structures library))
   structure)
 

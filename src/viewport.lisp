@@ -25,7 +25,8 @@
 	   #:set-port-center
 	   #:reset-port-center
 	   #:with-transform
-	   #:device-pixel-convertor))
+	   #:device-pixel-convertor
+	   #:whell-zoom))
 
 (in-package :cl-gdsfeel/viewport)
 
@@ -185,6 +186,16 @@
     (multiple-value-bind (xw yw)
 	(clem:transform-coord (x pt) (y pt) inv)
       (p xw yw))))
+
+
+(defun whell-zoom (vp port-pt direction)
+  (setf (port-center-x vp) (x port-pt))
+  (setf (port-center-y vp) (y port-pt))
+  (let* ((mat (final-transform vp))
+	 (world-center (invert-point mat port-pt)))
+    (setf (w-center vp) world-center)
+    (setf (w-scale vp) (* (w-scale vp) (+ 1.0 (* 0.125 direction)))))
+  (damage-transform vp))
 
 
 (defvar *r* nil)

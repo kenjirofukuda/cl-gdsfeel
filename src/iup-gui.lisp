@@ -26,8 +26,11 @@
 (defvar *viewport* nil)
 (defvar *trace-button-event* nil)
 (defvar *layer-color-assoc* nil)
-(defvar *bool-keys*
-  '(pixel-perfect))
+(defparameter *bool-keys*
+  '(pixel-perfect
+    trace-button-event
+    trace-motion-event
+    trace-wheel-event))
 (defvar *bool-table* (make-hash-table))
 
 
@@ -52,9 +55,7 @@
 				 item-layout
 				 (iup:separator)
 				 item-exit)))
-	   (debug-menu (iup:menu (list 
-				  (make-bool-item 'pixel-perfect)
-				  )))
+	   (debug-menu (iup:menu (debug-menu-items)))
 	   (sub-menu-file (iup:sub-menu file-menu :title "&File"))
 	   (sub-menu-debug (iup:sub-menu debug-menu :title "&Debug"))
 	   (menu (iup:menu (list
@@ -81,6 +82,7 @@
 			 :unmap_cb 'canvas-unmap-cb
 			 :motion_cb 'canvas-motion-cb
 			 :button_cb 'canvas-button-cb
+			 :wheel_cb 'canvas-wheel-cb
 			 :action 'canvas-redraw-cb
 			 :handlename "canvas"))
 	   (hbox
@@ -109,6 +111,10 @@
       (iup:main-loop))))
 
 
+(defun debug-menu-items ()
+  (mapcar 'make-bool-item *bool-keys*))
+
+
 (defun setup-bool-table ()
   (dolist (each *bool-keys*)
     (setf (gethash each *bool-table*) nil)))
@@ -135,6 +141,21 @@
 	    'truncate
 	    'identity))
   (invalidate-canvas)
+  iup:+default+)
+
+
+(defun trace-button-event-cb (handle)
+  (setf (gethash 'trace-button-event *bool-table*) (item-checked handle))
+  iup:+default+)
+
+
+(defun trace-motion-event-cb (handle)
+  (setf (gethash 'trace-motion-event *bool-table*) (item-checked handle))
+  iup:+default+)
+
+
+(defun trace-wheel-event-cb (handle)
+  (setf (gethash 'trace-wheel-event *bool-table*) (item-checked handle))
   iup:+default+)
 
 
@@ -206,6 +227,8 @@
 
 (defun activate-structure (structure)
   (setq *structure* structure)
+  (when *viewport* 
+    (set-bounds *viewport* (data-bbox structure)))
   (invalidate-canvas)
   (setf (iup:attribute (iup:handle "elementlist") 1) nil)
   (loop for each in (coerce (elements structure) 'list)
@@ -305,19 +328,21 @@
 
 
 (defmethod ad/stroke-cd ((element <sref>) canvas)
-  (with-transform *viewport* (lookup-affine-transform element)
-    (stroke-structure (resolved element) canvas #'ad/stroke-cd)))
+  (with-transform *viewport* (ref-transform element)
+    (stroke-structure (ref-structure element) canvas #'ad/stroke-cd)))
 
 
 (defmethod ad/stroke-cd ((element <aref>) canvas)
-  (dolist (each (lookup-repeated-transform element)) 
+  (dolist (each (repeated-transform element)) 
     (with-transform *viewport* each
-      (stroke-structure (resolved element) canvas #'ad/stroke-cd))))
+      (stroke-structure (ref-structure element) canvas #'ad/stroke-cd))))
 
 
 (defun stroke-structure (structure canvas &optional (stroke-proc #'ad/stroke-cd))
-  (loop for each in (coerce (children structure) 'list)
-	do (funcall stroke-proc each canvas)))
+  (let ((elist (coerce (children structure) 'list)))
+    
+    (dolist (each elist) 
+      (funcall stroke-proc each canvas))))
 
 
 (defun draw-structure-cd (structure canvas)
@@ -325,12 +350,11 @@
   (cd:clear canvas)
   (when (null structure)
     (return-from draw-structure-cd))
-  (set-bounds *viewport* (data-bbox structure))
   (stroke-structure structure canvas #'ad/stroke-cd))
 
 
 (defun draw-structure (structure canvas)
-  (time (draw-structure-cd structure canvas)))
+  (identity (draw-structure-cd structure canvas)))
 
 
 (defun cd-point (x y)
@@ -338,7 +362,7 @@
 
 
 (defun canvas-motion-cb (handle x y status)
-  (when *trace-button-event* 
+  (when (gethash 'trace-motion-event *bool-table*) 
     (print (list :handle handle :x x :y y :status (iup:status-plist status))))
   (let ((cp (cd-point x y)))
     (set-status (with-output-to-string (s)
@@ -350,9 +374,19 @@
 
 
 (defun canvas-button-cb (handle button pressed x y status)
-  (when *trace-button-event* 
+  (when (gethash 'trace-button-event *bool-table*)
     (print (list :handle handle :button button :pressed pressed
 		 :x x :y y :status (iup:status-plist status))))
+  iup:+default+)
+
+
+(defun canvas-wheel-cb (handle delta x y status)
+  (when (gethash 'trace-wheel-event *bool-table*)
+    (print (list :handle handle :delta delta 
+		 :x x :y y :status status)))
+  (let ((cp (cd-point x y)))
+    (whell-zoom *viewport* cp delta)
+    (invalidate-canvas))
   iup:+default+)
 
 

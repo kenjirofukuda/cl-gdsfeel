@@ -263,7 +263,7 @@
 				   (lambda (x) (fix-ce-value (* uunit x) uunit))
 				   body-data))
 	   (when (eq (type-of element) '<aref>)
-	     (let* ((mat (lookup-affine-transform element))
+	     (let* ((mat (ref-transform element))
 		    (col-point (invert-point mat (second (points element))))
 		    (row-point (invert-point mat (third (points element)))))
 	       (setf (x-step element) (fix-ce-value (/ (x col-point) (column-count element)) uunit))
@@ -311,7 +311,9 @@
            (setf (contents element) body-data))
 	  
           (_endel
-           (setq element nil))
+           (setq element nil)
+	   )
+	  
 
           ))))
   inform)
