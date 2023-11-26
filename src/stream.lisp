@@ -231,7 +231,7 @@
                  (setf (library inform) container)
                  ;; 'bgnstr
                  (progn
-                   (setq structure (add-structure (library inform) container))
+                   (setq structure container)
                    (setf (library structure) (library inform))))))
           
           (_libname
@@ -246,6 +246,7 @@
            (setf (name structure) body-data))
 
           (_endstr
+	   (add-structure (library inform) structure)
            (setq structure nil))
 
           ((_path _boundary _text _sref _aref)

@@ -86,7 +86,8 @@
    :depth-info
    :ref-transform
    :repeated-transform
-   :ref-structure)
+   :ref-structure
+   :structure-named)
   )
 
 
@@ -209,6 +210,9 @@
     :type list
     :initform nil
     :accessor structures)
+   (_structure-map
+    :type hash-table
+    :initform (make-hash-table))
    ))
 
 (defconstant +radians-per-degree+  0.017453292519943295d0)
@@ -377,6 +381,10 @@
    (children container)))
 
 
+(defmethod structure-named ((container <library>) name)
+  (gethash name (slot-value container '_structure-map)))
+
+
 (defmethod leaf-p ((structure <structure>))
   (zerop (length (reference-elements structure))))
 
@@ -533,6 +541,8 @@
 
 (defmethod add-structure ((library <library>) (structure <structure>))
   (push structure (structures library))
+  ;; FIXME
+  (setf (gethash (read-from-string (name structure)) (slot-value library '_structure-map)) structure)
   structure)
 
 
