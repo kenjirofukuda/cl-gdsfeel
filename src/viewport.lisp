@@ -26,7 +26,9 @@
 	   #:reset-port-center
 	   #:with-transform
 	   #:device-pixel-convertor
-	   #:whell-zoom))
+	   #:whell-zoom
+	   #:port-stack-empty-p
+	   #:device-size))
 
 (in-package :cl-gdsfeel/viewport)
 
@@ -98,12 +100,10 @@
 
 
 (defun get-bounds (vp)
-  (let ((inv (clem:invert-matrix (final-transform vp))))
-    (multiple-value-bind (x1 y1)
-	(clem:transform-coord 0 0 inv)
-      (multiple-value-bind (x2 y2)
-	  (clem:transform-coord (port-width vp) (port-height vp) inv)
-	(make-bbox x1 y1 x2 y2)))))
+  (let* ((tx (final-transform vp))
+	 (min-pt (invert-point tx (p 0 0)))
+	 (max-pt (invert-point tx (p (port-width vp) (port-height vp)))))
+    (2point->bbox min-pt max-pt)))
 
 
 (defun lookup-basic-transform (vp)
@@ -152,6 +152,9 @@
 	(damage-transform vp)
 	result)))
 
+(defun port-stack-empty-p (vp)
+  (zerop (length (_transform-stack vp))))
+
 
 (defun call-with-transform (vp tx func)
   (push-transform vp tx) 
@@ -166,6 +169,12 @@
 
 
 (defmethod bounds ((viewport <viewport>) (w-bounds <bounding-box>) ) )
+
+
+(defun device-size (vp size)
+  (let ((p1 (world->device vp (p size size)))
+	(p2 (world->device vp (p 0 0))))
+    (distance (x p1) (y p1) (x p2) (y p2))))
 
 
 (defmethod world->device ((vp <viewport>) (pt <point>))

@@ -24,8 +24,9 @@
 (defvar *structure* nil)
 (defvar *element* nil)
 (defvar *viewport* nil)
-(defvar *trace-button-event* nil)
 (defvar *layer-color-assoc* nil)
+(defvar *fast-drawing* nil)
+(defvar *thread-fast-drawing* nil)
 (defparameter *bool-keys*
   '(pixel-perfect
     trace-button-event
@@ -286,6 +287,12 @@
      points)))
 
 
+(defun ad/stroke-bbox (bbox canvas)
+  (ad/stroke-points (bbox-points bbox)
+		    canvas
+		    :path-mode-closed-lines))
+
+
 (defmethod ad/stroke-cd (element canvas)
   (ad/stroke-points (points element)
 		    canvas
@@ -304,9 +311,10 @@
 
 (defmethod ad/stroke-cd ((element <path>) canvas)
   ;; stroke path center
-  (ad/stroke-points (points element)
-		    canvas
-		    :path-mode-open-lines)
+  (unless *fast-drawing* 
+    (ad/stroke-points (points element)
+		      canvas
+		      :path-mode-open-lines))
   ;; stroke path outline
   (ad/stroke-points (outline-coords element) 
 		    canvas
@@ -335,14 +343,27 @@
 (defmethod ad/stroke-cd ((element <aref>) canvas)
   (dolist (each (repeated-transform element)) 
     (with-transform *viewport* each
-      (stroke-structure (ref-structure element) canvas #'ad/stroke-cd))))
+      (stroke-structure (ref-structure element) canvas #'ad/stroke-cd)))
+  ;;(setf (cd:foreground canvas) cd:+white+)
+  ;;(ad/stroke-bbox (data-bbox element) canvas)
+  )
 
 
 (defun stroke-structure (structure canvas &optional (stroke-proc #'ad/stroke-cd))
   (let ((elist (coerce (children structure) 'list)))
-    
-    (dolist (each elist) 
-      (funcall stroke-proc each canvas))))
+    (when (port-stack-empty-p *viewport*)
+      (setf elist (clip-elements (get-bounds *viewport*) elist)))
+    (dolist (each elist)
+      (let* ((long-side (max (bbox-width (data-bbox each))
+			     (bbox-height (data-bbox each))))
+	     (pix-size (device-size *viewport* long-side))
+	     (drawable (> pix-size (if *fast-drawing* 10.0 2.0))))
+	(when drawable
+	  (funcall stroke-proc each canvas))))))
+
+
+(defun clip-elements (bbox elst)
+  (remove-if-not (lambda (e) (bounding-boxes-intersect-p bbox (data-bbox e))) elst))
 
 
 (defun draw-structure-cd (structure canvas)
@@ -355,6 +376,20 @@
 
 (defun draw-structure (structure canvas)
   (identity (draw-structure-cd structure canvas)))
+
+
+(defun fire-fast-drawing ()
+  (setf *fast-drawing* t)
+  (when (and *thread-fast-drawing* (bt:thread-alive-p *thread-fast-drawing*))
+    (bt:destroy-thread *thread-fast-drawing*)
+    (setf *thread-fast-drawing* nil))
+  (setf *thread-fast-drawing* (bt:make-thread (lambda ()
+						(sleep 0.2)
+						(setf *fast-drawing* nil)
+						)
+					      :name "first-drawing"))
+  
+  )
 
 
 (defun cd-point (x y)
@@ -386,7 +421,9 @@
 		 :x x :y y :status status)))
   (let ((cp (cd-point x y)))
     (whell-zoom *viewport* cp delta)
-    (invalidate-canvas))
+    (unless *fast-drawing*
+      (invalidate-canvas))
+    (fire-fast-drawing))
   iup:+default+)
 
 

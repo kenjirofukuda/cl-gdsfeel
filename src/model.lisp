@@ -280,6 +280,16 @@
 			  (bbox-points ref-bbox)))))
 
 
+(defmethod calc-bbox ((element <aref>))
+  (let* ((ref-points (bbox-points (data-bbox (resolved element))))
+	 (txs (repeated-transform element))
+	 (all-points (flatten (mapcar (lambda (tx)
+					(mapcar (lambda (pt) (transform-point tx pt))
+						ref-points))
+				      txs))))
+    (points->bbox all-points)))
+
+
 (defmethod ref-transform ((element <reference>))
   (when (null (slot-value element '_ref-transform))
     (setf (slot-value element '_ref-transform) (lookup-affine-transform element)))
