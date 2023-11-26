@@ -64,6 +64,7 @@
    :<path>
    :path-width
    :pathtype
+   :outline-coords
 
    :<boundary>
 
@@ -81,7 +82,6 @@
    :column-count
    
    :points
-   :path-outline-coords
    :calc-transform
    :used-layer-numbers
    :depth-info
@@ -209,9 +209,13 @@
 
 (defconstant +radians-per-degree+  0.017453292519943295d0)
 
+
+;; NOTE: don't remove still use for PATHS:
 (defmethod coords-2a ((element <element>))
   (aops:reshape (coerce (xy element) 'vector) '(t 2)))
 
+
+;; NOTE: don't remove still use in PATHS:
 (defmethod coords ((element <element>))
   (let* ((coords (coords-2a element))
 	 (dims (array-dimensions coords))
@@ -250,6 +254,10 @@
     (coerce (paths::path-knots (if (listp outline) (car outline) outline)) 'list)))
 
 
+(defun outline-coords (path)
+  (path-outline-coords (coords path) (path-width path) (pathtype path)))
+
+
 (defgeneric calc-bbox (object))
 
 
@@ -258,10 +266,7 @@
 
 
 (defmethod calc-bbox ((element <path>))
-  (points->bbox (path-outline-coords
-		 (coords element)
-		 (path-width element)
-		 (pathtype element))))
+  (points->bbox (outline-coords element)))
 
 
 (defmethod calc-bbox ((element <sref>))

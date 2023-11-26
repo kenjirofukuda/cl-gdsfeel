@@ -296,14 +296,11 @@
 
 (defmethod ad/stroke-cd ((element <path>) canvas)
   ;; stroke path center
-  (ad/stroke-points (coords element)
+  (ad/stroke-points (points element)
 		    canvas
 		    :path-mode-open-lines)
   ;; stroke path outline
-  (ad/stroke-points (path-outline-coords
-		     (coords element)
-		     (path-width element)
-		     (pathtype element)) 
+  (ad/stroke-points (outline-coords element) 
 		    canvas
 		    :path-mode-closed-lines))
 
