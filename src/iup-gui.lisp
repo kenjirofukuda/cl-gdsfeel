@@ -270,7 +270,7 @@
 
 
 (defun invalidate-canvas ()
-  #-windows (iup:redraw (iup:handle "dialog") t) ;; bug fix
+  #-windows (iup:redraw (iup:handle "canvas") t) ;; bug fix
   #+windows (iup:redraw (iup:handle "canvas") t))
 
 
@@ -539,8 +539,19 @@
     (unless (null targets)
       (print "gds already running")
       (return-from start-gds-thread))
-    (bt:make-thread
-     (lambda () (entry-point)) :name "gds")))
+    (bt:make-thread (lambda ()
+		      (sb-profile:profile
+		       "CL-GDSFEEL/IUP-GUI"
+		       "CL-GDSFEEL/MODEL"
+		       "CL-GDSFEEL/STREAM"
+		       "CL-GDSFEEL/GEOM"
+		       "2D-GEOMETRY"
+		       "NET.TUXEE.PATHS"
+		       "CLEM"
+		       )
+		      (entry-point)
+		      (sb-profile:report))
+		    :name "gds")))
 
 
 (defun quit-gds-thread ()
