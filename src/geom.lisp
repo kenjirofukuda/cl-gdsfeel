@@ -3,7 +3,9 @@
 
 (defpackage cl-gdsfeel/geom
   (:use #:cl
+	#:cl-user
 	#:clem
+	#:sb-alien
 	#:cl-geometry2
 	)
   (:export #:<point>
@@ -25,7 +27,13 @@
 	   #:2point->bbox
 	   #:bbox-mid
 	   #:transform-point
-	   #:invert-point)
+	   #:invert-point
+	   #:transform-point2
+	   #:invert-point2
+	   #:mat3*
+	   #:mat3
+	   #:make-mat3
+	   #:mat3-m)
   )
 
 (in-package cl-gdsfeel/geom)
@@ -166,6 +174,16 @@
     (p xd yd)))
 
 
+(defun transform-point2 (tx pt)
+  (let ((m (make-mat3)))
+    (setf (aref (mat3-m m) 0 0) (coerce (x pt) 'double-float))
+    (setf (aref (mat3-m m) 0 1) (coerce (y pt) 'double-float))
+    (setf (aref (mat3-m m) 0 2) 1.0d0)
+    (let ((cm (mat3* tx m)))
+      (print (mat3-m cm))
+      (p (aref (mat3-m cm) 0 0) (aref (mat3-m cm) 0 1)))))
+
+
 (defun invert-point (tx pt)
   (let* ((x1 (- (x pt) (mref tx 0 2)))
 	 (y1 (- (y pt) (mref tx 1 2)))
@@ -178,6 +196,24 @@
 	 (dety 0))
     (when (zerop det)
       (return-from invert-point (p 0 0)))
+    (setq det (/ 1.0d0 det))
+    (setq detx (- (* x1 a11) (* a01 y1)))
+    (setq dety (- (* a00 y1) (* x1 a10)))
+    (p (* detx det) (* detY det))))
+
+
+(defun invert-point2 (tx pt)
+  (let* ((x1 (- (x pt) (aref (mat3-m tx) 2 0)))
+	 (y1 (- (y pt) (aref (mat3-m tx) 2 1)))
+	 (a00 (aref (mat3-m tx) 0 0))
+	 (a01 (aref (mat3-m tx) 1 0))
+	 (a10 (aref (mat3-m tx) 0 1))
+	 (a11 (aref (mat3-m tx) 1 1))
+	 (det (- (* a00 a11) (* a01 a10)))
+	 (detx 0)
+	 (dety 0))
+    (when (zerop det)
+      (return-from invert-point2 (p 0 0)))
     (setq det (/ 1.0d0 det))
     (setq detx (- (* x1 a11) (* a01 y1)))
     (setq dety (- (* a00 y1) (* x1 a10)))
@@ -197,3 +233,38 @@
     ))
 (defvar *foo* nil)
 (setq *foo* (sample-bounding-box))
+
+(sb-alien:load-shared-object "libblas.so.3")
+
+(declaim (inline dgemm))
+
+(sb-alien:define-alien-routine ("dgemm_" dgemm) void
+  (transa c-string)
+  (transb c-string)
+  (m int :copy)
+  (n int :copy)
+  (k int :copy)
+  (alpha double :copy)
+  (a (* double))
+  (lda int :copy)
+  (b (* double))
+  (ldb int :copy)
+  (beta double :copy)
+  (c (* double))
+  (ldc int :copy))
+
+(defun pointer (array)
+  (sap-alien (sb-sys:vector-sap (sb-ext:array-storage-vector array)) (* double)))
+
+(defstruct mat3
+  (m (make-array '(3 3) :element-type 'double-float
+			:initial-contents '((1.0d0 0.0d0 0.0d0) (0.0d0 1.0d0 0.0d0) (0.0d0 0.0d0 1.0d0)))))
+
+
+(defun mat3* (a b)
+  (let* ((c (make-mat3))
+	 (n 3))
+    (sb-sys:with-pinned-objects (a b c)
+      (dgemm "n" "n" n n n 1d0 (pointer (mat3-m a)) n (pointer (mat3-m b)) n 0d0 (pointer (mat3-m c)) n))
+    c))
+

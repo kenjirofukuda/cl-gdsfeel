@@ -85,7 +85,9 @@
    :used-layer-numbers
    :depth-info
    :ref-transform
+   :ref-transform2
    :repeated-transform
+   :repeated-transform2
    :ref-structure
    :structure-named)
   )
@@ -163,6 +165,9 @@
 (defclass <reference> (<element> <strans>)
   ((_ref-transform
     :type (or affine-transformation null)
+    :initform nil)
+   (_ref-transform2
+    :type (or mat3 null)
     :initform nil)))
 
 
@@ -178,6 +183,9 @@
    (column-count :type integer :initform 0 :accessor column-count)
    (_repeated-transform
     :type (or affine-transformation null)
+    :initform nil)
+   (_repeated-transform2
+    :type (or mat3 null)
     :initform nil)))
 
 
@@ -300,10 +308,22 @@
   (slot-value element '_ref-transform))
 
 
+(defmethod ref-transform2 ((element <reference>))
+  (when (null (slot-value element '_ref-transform2))
+    (setf (slot-value element '_ref-transform2) (lookup-affine-transform2 element)))
+  (slot-value element '_ref-transform2))
+
+
 (defmethod repeated-transform ((element <aref>))
   (when (null (slot-value element '_repeated-transform))
     (setf (slot-value element '_repeated-transform) (lookup-repeated-transform element)))
   (slot-value element '_repeated-transform))
+
+
+(defmethod repeated-transform2 ((element <aref>))
+  (when (null (slot-value element '_repeated-transform2))
+    (setf (slot-value element '_repeated-transform2) (lookup-repeated-transform2 element)))
+  (slot-value element '_repeated-transform2))
 
 
 (defmethod calc-bbox ((structure <structure>))
@@ -354,6 +374,26 @@
     m))
 
 
+(defmethod lookup-affine-transform2 ((reference <reference>))
+  (let* ((m (make-mat3))
+	 (x (first (xy reference)))
+	 (y (second (xy reference)))
+	 (scale (mag reference))
+	 (theta (* +radians-per-degree+ (angle reference)))
+	 (rad-cos (* scale (cos theta)))
+	 (rad-sin (* scale (sin theta))))
+    (setf (aref (mat3-m m) 0 0) rad-cos)
+    (setf (aref (mat3-m m) 0 1) rad-sin)
+    (setf (aref (mat3-m m) 1 0) (- rad-sin))
+    (setf (aref (mat3-m m) 1 1) rad-cos)
+    (setf (aref (mat3-m m) 2 0) x)
+    (setf (aref (mat3-m m) 2 1) y)
+    (when (reflected-p reference)
+      (setf (aref (mat3-m m) 1 0) (- (aref (mat3-m m) 1 0)))
+      (setf (aref (mat3-m m) 1 1) (- (aref (mat3-m m) 1 1))))
+    m))
+
+
 (defmethod lookup-offsets ((aref <aref>))
   (flatten (loop for x-index below (column-count aref)
 		 collect (loop
@@ -368,6 +408,17 @@
 	      (let ((otx (clem:make-affine-transformation :x-shift (x offset)
 							  :y-shift (y offset))))
 		(clem:m* tx otx)))
+	    offsets)))
+
+
+(defmethod lookup-repeated-transform2 ((aref <aref>))
+  (let ((tx (ref-transform2 aref))
+	(offsets (lookup-offsets aref)))
+    (mapcar (lambda (offset)
+	      (let ((otx (make-mat3)))
+		(setf (aref (mat3-m otx) 2 0) (x offset))
+		(setf (aref (mat3-m otx) 2 1) (y offset))
+		(mat3* tx otx)))
 	    offsets)))
 
 
