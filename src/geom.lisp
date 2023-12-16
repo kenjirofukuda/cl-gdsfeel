@@ -33,7 +33,8 @@
 	   #:mat3*
 	   #:mat3
 	   #:make-mat3
-	   #:mat3-m)
+	   #:mat3-m
+	   #:set-affine-parameters)
   )
 
 (in-package cl-gdsfeel/geom)
@@ -180,7 +181,7 @@
     (setf (aref (mat3-m m) 0 1) (coerce (y pt) 'double-float))
     (setf (aref (mat3-m m) 0 2) 1.0d0)
     (let ((cm (mat3* tx m)))
-      (print (mat3-m cm))
+					;(print (mat3-m cm))
       (p (aref (mat3-m cm) 0 0) (aref (mat3-m cm) 0 1)))))
 
 
@@ -259,6 +260,34 @@
 (defstruct mat3
   (m (make-array '(3 3) :element-type 'double-float
 			:initial-contents '((1.0d0 0.0d0 0.0d0) (0.0d0 1.0d0 0.0d0) (0.0d0 0.0d0 1.0d0)))))
+
+
+(defun set-affine-parameters (mat
+                              &key
+                                (y-shift 0d0)
+                                (x-shift 0d0)
+                                (theta 0d0)
+                                (y-scale 1d0)
+                                (x-scale 1d0)
+                                (y-shear 0d0)
+                                (x-shear 0d0))
+  (setf (aref mat 0 0) (- (* (cos theta) x-scale)
+                          (* (sin theta) y-scale y-shear)))
+  (setf (aref mat 1 0) (- (* (cos theta) x-scale x-shear)
+                          (* (sin theta) y-scale)))
+  (setf (aref mat 2 0) (coerce x-shift 'double-float))
+
+  (setf (aref mat 0 1) (+ (* (sin theta) x-scale)
+                          (* (cos theta) y-scale y-shear)))
+  (setf (aref mat 1 1) (+ (* (sin theta) x-scale x-shear)
+                          (* (cos theta) y-scale)))
+  (setf (aref mat 2 1) (coerce y-shift 'double-float))
+  
+  (setf (aref mat 0 2) 0d0)
+  (setf (aref mat 1 2) 0d0)
+  (setf (aref mat 2 2) 1d0)
+  mat)
+
 
 
 (defun mat3* (a b)

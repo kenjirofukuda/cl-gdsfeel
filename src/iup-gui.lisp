@@ -282,7 +282,7 @@
   (cd:with-vertices (canvas path-mode)
     (mapcar
      (lambda (wp)
-       (let ((dp (world->device *viewport* (as-point wp))))
+       (let ((dp (world->device2 *viewport* (as-point wp))))
 	 (cd:vertex canvas (x dp) (y dp))))
      points)))
 
@@ -322,7 +322,7 @@
 
 
 (defun mark-world (canvas wpt)
-  (let ((dp (world->device *viewport* (as-point wpt))))
+  (let ((dp (world->device2 *viewport* (as-point wpt))))
     (cd:mark canvas (x dp) (y dp))))
 
 
@@ -336,12 +336,12 @@
 
 
 (defmethod ad/stroke-cd ((element <sref>) canvas)
-  (with-transform *viewport* (ref-transform element)
+  (with-transform *viewport* (ref-transform2 element)
     (stroke-structure (ref-structure element) canvas #'ad/stroke-cd)))
 
 
 (defmethod ad/stroke-cd ((element <aref>) canvas)
-  (dolist (each (repeated-transform element)) 
+  (dolist (each (repeated-transform2 element)) 
     (with-transform *viewport* each
       (stroke-structure (ref-structure element) canvas #'ad/stroke-cd)))
   ;;(setf (cd:foreground canvas) cd:+white+)
@@ -403,7 +403,7 @@
     (set-status (with-output-to-string (s)
 		  (format s "(H: ~5d, V: ~5d)" (x cp) (y cp))
 		  (unless (null *viewport*)
-		    (let ((wp (device->world *viewport* cp)))
+		    (let ((wp (device->world2 *viewport* cp)))
 		      (format s "   (X: ~10,4f, Y: ~10,4f)" (x wp) (y wp)))))))
   iup:+default+)
 
@@ -423,7 +423,8 @@
     (whell-zoom *viewport* cp delta)
     (unless *fast-drawing*
       (invalidate-canvas))
-    (fire-fast-drawing))
+					;(fire-fast-drawing)
+    )
   iup:+default+)
 
 
@@ -540,17 +541,18 @@
       (print "gds already running")
       (return-from start-gds-thread))
     (bt:make-thread (lambda ()
-		      (sb-profile:profile
-		       "CL-GDSFEEL/IUP-GUI"
-		       "CL-GDSFEEL/MODEL"
-		       "CL-GDSFEEL/STREAM"
-		       "CL-GDSFEEL/GEOM"
-		       "2D-GEOMETRY"
-		       "NET.TUXEE.PATHS"
-		       "CLEM"
-		       )
+		      ;; (sb-profile:profile
+		      ;;  "CL-GDSFEEL/IUP-GUI"
+		      ;;  "CL-GDSFEEL/MODEL"
+		      ;;  "CL-GDSFEEL/STREAM"
+		      ;;  "CL-GDSFEEL/GEOM"
+		      ;;  "2D-GEOMETRY"
+		      ;;  "NET.TUXEE.PATHS"
+		      ;;  "CLEM"
+		      ;;  )
 		      (entry-point)
-		      (sb-profile:report))
+		      ;; (sb-profile:report)
+		      )
 		    :name "gds")))
 
 

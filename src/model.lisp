@@ -287,16 +287,16 @@
 
 (defmethod calc-bbox ((element <sref>))
   (let* ((ref-bbox (data-bbox (resolved element)))
-	 (tx (ref-transform element)))
-    (points->bbox (mapcar (lambda (each) (transform-point tx each))
+	 (tx (ref-transform2 element)))
+    (points->bbox (mapcar (lambda (each) (transform-point2 tx each))
 			  (bbox-points ref-bbox)))))
 
 
 (defmethod calc-bbox ((element <aref>))
   (let* ((ref-points (bbox-points (data-bbox (resolved element))))
-	 (txs (repeated-transform element))
+	 (txs (repeated-transform2 element))
 	 (all-points (flatten (mapcar (lambda (tx)
-					(mapcar (lambda (pt) (transform-point tx pt))
+					(mapcar (lambda (pt) (transform-point2 tx pt))
 						ref-points))
 				      txs))))
     (points->bbox all-points)))
