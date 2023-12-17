@@ -7,8 +7,6 @@
 	#:cl-geometry2
 	#:cl-gdsfeel/geom
 	#:cl-gdsfeel/model)
-  (:import-from #:clem
-		#:invert-matrix)
   (:import-from #:osicat-posix
 		#:stat #:stat-size)
   (:shadowing-import-from #:alexandria
@@ -264,9 +262,9 @@
 				   (lambda (x) (fix-ce-value (* uunit x) uunit))
 				   body-data))
 	   (when (eq (type-of element) '<aref>)
-	     (let* ((mat (ref-transform2 element))
-		    (col-point (invert-point2 mat (second (points element))))
-		    (row-point (invert-point2 mat (third (points element)))))
+	     (let* ((mat (ref-transform element))
+		    (col-point (invert-point mat (second (points element))))
+		    (row-point (invert-point mat (third (points element)))))
 	       (setf (x-step element) (fix-ce-value (/ (x col-point) (column-count element)) uunit))
 	       (setf (y-step element) (fix-ce-value (/ (y row-point) (row-count element)) uunit)))))
 	  

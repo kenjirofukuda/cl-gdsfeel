@@ -8,9 +8,9 @@
                "nibbles"
                "array-operations"
                "local-time"
+	       "3d-matrices"
 	       "cl-geometry2"
 	       "cl-colors2"
-               "clem"
                "cl-slice"
 	       "cl-vectors"
 	       "iup"
@@ -21,11 +21,11 @@
 	       )
   :components ((:module "src"
                 :components
-			((:file "iup-gui" :depends-on ("stream" "viewport"))
-			 (:file "stream" :depends-on ("model"))
-			 (:file "model" :depends-on ("geom"))
-			 (:file "viewport" :depends-on ("geom"))
-			 (:file "geom"))))
+		((:file "iup-gui" :depends-on ("stream" "viewport"))
+		 (:file "stream" :depends-on ("model"))
+		 (:file "model" :depends-on ("geom"))
+		 (:file "viewport" :depends-on ("geom"))
+		 (:file "geom"))))
   :description ""
   :in-order-to ((test-op (test-op "cl-gdsfeel/tests"))))
 

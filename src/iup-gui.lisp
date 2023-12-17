@@ -17,6 +17,8 @@
 
 (in-package :cl-gdsfeel/iup-gui)
 
+(declaim (inline bbox-width bbox-height))
+
 (define-constant +default-window-title+ "GdsFeel" :test #'string=)
 
 (defvar *canvas* nil)
@@ -123,7 +125,7 @@
 
 (defun make-bool-item (sym &optional (initial :off))
   (let* ((str (string-downcase (symbol-name sym)))
-	 (cb-name (read-from-string (concatenate 'string str "-cb")))
+	 (cb-name (read-from-string (concatenate 'string (package-name *package*) "::"   (concatenate 'string str "-cb"))))
 	 (title (substitute #\space #\- str)))
     (iup:item :title title
 	      :autotoggle :yes
@@ -282,7 +284,7 @@
   (cd:with-vertices (canvas path-mode)
     (mapcar
      (lambda (wp)
-       (let ((dp (world->device2 *viewport* (as-point wp))))
+       (let ((dp (world->device *viewport* (as-point wp))))
 	 (cd:vertex canvas (x dp) (y dp))))
      points)))
 
@@ -336,12 +338,12 @@
 
 
 (defmethod ad/stroke-cd ((element <sref>) canvas)
-  (with-transform *viewport* (ref-transform2 element)
+  (with-transform *viewport* (ref-transform element)
     (stroke-structure (ref-structure element) canvas #'ad/stroke-cd)))
 
 
 (defmethod ad/stroke-cd ((element <aref>) canvas)
-  (dolist (each (repeated-transform2 element)) 
+  (dolist (each (repeated-transform element)) 
     (with-transform *viewport* each
       (stroke-structure (ref-structure element) canvas #'ad/stroke-cd)))
   ;;(setf (cd:foreground canvas) cd:+white+)
@@ -403,7 +405,7 @@
     (set-status (with-output-to-string (s)
 		  (format s "(H: ~5d, V: ~5d)" (x cp) (y cp))
 		  (unless (null *viewport*)
-		    (let ((wp (device->world2 *viewport* cp)))
+		    (let ((wp (device->world *viewport* cp)))
 		      (format s "   (X: ~10,4f, Y: ~10,4f)" (x wp) (y wp)))))))
   iup:+default+)
 
@@ -549,7 +551,7 @@
 			 "CL-GDSFEEL/GEOM"
 			 "2D-GEOMETRY"
 			 "NET.TUXEE.PATHS"
-			 "CLEM"
+			 "3D-MATRICES"
 			 ))
 		      (entry-point)
 		      (when profile

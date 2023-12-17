@@ -2,7 +2,8 @@
   (:use #:cl
 	#:alexandria
 	#:local-time
-	#:clem
+	#:3d-vectors
+	#:3d-matrices
 	#:cl-geometry2
 	#:cl-gdsfeel/geom)
   (:shadow :structure)
@@ -89,7 +90,8 @@
    :repeated-transform
    :repeated-transform2
    :ref-structure
-   :structure-named)
+   :structure-named
+   :calc-bbox)
   )
 
 
@@ -167,7 +169,7 @@
     :type (or affine-transformation null)
     :initform nil)
    (_ref-transform2
-    :type (or mat3 null)
+    :type (or my/mat3 null)
     :initform nil)))
 
 
@@ -287,16 +289,16 @@
 
 (defmethod calc-bbox ((element <sref>))
   (let* ((ref-bbox (data-bbox (resolved element)))
-	 (tx (ref-transform2 element)))
-    (points->bbox (mapcar (lambda (each) (transform-point2 tx each))
+	 (tx (ref-transform element)))
+    (points->bbox (mapcar (lambda (each) (transform-point tx each))
 			  (bbox-points ref-bbox)))))
 
 
 (defmethod calc-bbox ((element <aref>))
   (let* ((ref-points (bbox-points (data-bbox (resolved element))))
-	 (txs (repeated-transform2 element))
+	 (txs (repeated-transform element))
 	 (all-points (flatten (mapcar (lambda (tx)
-					(mapcar (lambda (pt) (transform-point2 tx pt))
+					(mapcar (lambda (pt) (transform-point tx pt))
 						ref-points))
 				      txs))))
     (points->bbox all-points)))
@@ -362,35 +364,52 @@
       (abs-angle-p strans)))
 
 
+;; (defmethod lookup-affine-transform ((reference <reference>))
+;;   (let ((m (clem:make-affine-transformation :x-shift (first (xy reference))
+;; 					    :y-shift (second (xy reference))
+;; 					    :x-scale (mag reference)
+;; 					    :y-scale (mag reference)
+;; 					    :theta (* +radians-per-degree+ (angle reference)))))
+;;     (when (reflected-p reference)
+;;       (setf (mref m 0 1) (- (mref m 0 1)))
+;;       (setf (mref m 1 1) (- (mref m 1 1))))
+;;     m))
+
+
 (defmethod lookup-affine-transform ((reference <reference>))
-  (let ((m (clem:make-affine-transformation :x-shift (first (xy reference))
-					    :y-shift (second (xy reference))
-					    :x-scale (mag reference)
-					    :y-scale (mag reference)
-					    :theta (* +radians-per-degree+ (angle reference)))))
+  (let ((mat (mtranslation (vec (first (xy reference))
+				(second (xy reference))
+				0.0))))
+    (nmscale mat (vec (mag reference)
+		      (mag reference)
+		      1.0))
+    (nmrotate mat +vz+ (* +radians-per-degree+ (angle reference)))
     (when (reflected-p reference)
-      (setf (mref m 0 1) (- (mref m 0 1)))
-      (setf (mref m 1 1) (- (mref m 1 1))))
-    m))
+      (setf (mcref4 mat 0 1) (- (mcref4 mat 0 1)))
+      (setf (mcref4 mat 1 1) (- (mcref4 mat 1 1)))
+      )
+    mat
+    )
+  )
 
 
 (defmethod lookup-affine-transform2 ((reference <reference>))
-  (let* ((m (make-mat3))
+  (let* ((m (make-my/mat3))
 	 (x (first (xy reference)))
 	 (y (second (xy reference)))
 	 (scale (mag reference))
 	 (theta (* +radians-per-degree+ (angle reference)))
 	 (rad-cos (* scale (cos theta)))
 	 (rad-sin (* scale (sin theta))))
-    (setf (aref (mat3-m m) 0 0) rad-cos)
-    (setf (aref (mat3-m m) 0 1) rad-sin)
-    (setf (aref (mat3-m m) 1 0) (- rad-sin))
-    (setf (aref (mat3-m m) 1 1) rad-cos)
-    (setf (aref (mat3-m m) 2 0) x)
-    (setf (aref (mat3-m m) 2 1) y)
+    (setf (aref (my/mat3-m m) 0 0) rad-cos)
+    (setf (aref (my/mat3-m m) 0 1) rad-sin)
+    (setf (aref (my/mat3-m m) 1 0) (- rad-sin))
+    (setf (aref (my/mat3-m m) 1 1) rad-cos)
+    (setf (aref (my/mat3-m m) 2 0) x)
+    (setf (aref (my/mat3-m m) 2 1) y)
     (when (reflected-p reference)
-      (setf (aref (mat3-m m) 1 0) (- (aref (mat3-m m) 1 0)))
-      (setf (aref (mat3-m m) 1 1) (- (aref (mat3-m m) 1 1))))
+      (setf (aref (my/mat3-m m) 1 0) (- (aref (my/mat3-m m) 1 0)))
+      (setf (aref (my/mat3-m m) 1 1) (- (aref (my/mat3-m m) 1 1))))
     m))
 
 
@@ -405,9 +424,10 @@
   (let ((tx (ref-transform aref))
 	(offsets (lookup-offsets aref)))
     (mapcar (lambda (offset)
-	      (let ((otx (clem:make-affine-transformation :x-shift (x offset)
-							  :y-shift (y offset))))
-		(clem:m* tx otx)))
+	      (let ((otx (mtranslation (vec (x offset) 
+					    (y offset)
+					    0.0))))
+		(m* tx otx)))
 	    offsets)))
 
 
@@ -415,10 +435,10 @@
   (let ((tx (ref-transform2 aref))
 	(offsets (lookup-offsets aref)))
     (mapcar (lambda (offset)
-	      (let ((otx (make-mat3)))
-		(setf (aref (mat3-m otx) 2 0) (x offset))
-		(setf (aref (mat3-m otx) 2 1) (y offset))
-		(mat3* tx otx)))
+	      (let ((otx (make-my/mat3)))
+		(setf (aref (my/mat3-m otx) 2 0) (x offset))
+		(setf (aref (my/mat3-m otx) 2 1) (y offset))
+		(my/mat3-mult tx otx)))
 	    offsets)))
 
 

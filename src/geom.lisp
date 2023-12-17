@@ -1,12 +1,13 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
-  (ql:quickload '("clem" "cl-geometry2")))
+  (ql:quickload '("3d-matrices" "cl-geometry2")))
 
 (defpackage cl-gdsfeel/geom
   (:use #:cl
 	#:cl-user
-	#:clem
 	#:sb-alien
 	#:cl-geometry2
+	#:3d-vectors
+	#:3d-matrices
 	)
   (:export #:<point>
 	   #:p
@@ -31,14 +32,16 @@
 	   #:transform-point2
 	   #:invert-point2
 	   #:mat3*
-	   #:mat3
-	   #:make-mat3
-	   #:mat3-m
-	   #:set-affine-parameters)
+	   #:my/make-mat3
+	   #:my/mat3-m
+	   #:my/mat3-mult
+	   #:set-affine-parameters
+	   )
   )
 
 (in-package cl-gdsfeel/geom)
 
+(declaim (inline bbox-width bbox-height))
 
 (defclass <point> ()
   ((x :type double-float :reader x :initarg :x :initform 0.0d0)
@@ -62,6 +65,9 @@
      (+ (y p1) (y p2))))
 
 
+(declaim (inline dotpairp))
+
+
 (defun dotpairp (x)
   (and (listp x) (atom (car x)) (not (listp (cdr x)))))
 
@@ -70,6 +76,7 @@
 
 
 (defmethod as-point ((object sequence))
+  (declare (inline dotpairp))
   (if (dotpairp object)
       (p (car object) (cdr object))
       (p (first object) (second object))))
@@ -79,7 +86,7 @@
   (p (x object) (y object)))
 
 
-(defclass <transform> (clem:affine-transformation) ())
+;; (defclass <transform> (clem:affine-transformation) ())
 
 
 (defclass <bounding-box> (bounding-box) ())
@@ -172,29 +179,37 @@
 	  (p x-max y-min))))
 
 
+;; (defun transform-point (tx pt)
+;;   (multiple-value-bind (xd yd)
+;;       (clem:transform-coord (x pt) (y pt) tx)
+;;     (p xd yd)))
+
+;;(declaim (ftype (function (mat4 <point>) <point>) transform-point))
 (defun transform-point (tx pt)
-  (multiple-value-bind (xd yd)
-      (clem:transform-coord (x pt) (y pt) tx)
-    (p xd yd)))
+  (let ((m (m* tx (mtranslation (vec (x pt) (y pt) 0.0)))))
+    ;;(describe m)
+    (p (mcref4 m 0 3) (mcref4 m 1 3))
+    )
+  )
 
 
 (defun transform-point2 (tx pt)
-  (let ((m (make-mat3)))
-    (setf (aref (mat3-m m) 0 0) (coerce (x pt) 'double-float))
-    (setf (aref (mat3-m m) 0 1) (coerce (y pt) 'double-float))
-    (setf (aref (mat3-m m) 0 2) 1.0d0)
-    (let ((cm (mat3* tx m)))
-					;(print (mat3-m cm))
-      (p (aref (mat3-m cm) 0 0) (aref (mat3-m cm) 0 1)))))
+  (let ((m (make-my/mat3)))
+    (setf (aref (my/mat3-m m) 0 0) (coerce (x pt) 'double-float))
+    (setf (aref (my/mat3-m m) 0 1) (coerce (y pt) 'double-float))
+    (setf (aref (my/mat3-m m) 0 2) 1.0d0)
+    (let ((cm (my/mat3-mult tx m)))
+					;(print (my/mat3-m cm))
+      (p (aref (my/mat3-m cm) 0 0) (aref (my/mat3-m cm) 0 1)))))
 
-
+;;(declaim (ftype (function (mat4 <point>) <point>) invert-point))
 (defun invert-point (tx pt)
-  (let* ((x1 (- (x pt) (mref tx 0 2)))
-	 (y1 (- (y pt) (mref tx 1 2)))
-	 (a00 (mref tx 0 0))
-	 (a01 (mref tx 0 1))
-	 (a10 (mref tx 1 0))
-	 (a11 (mref tx 1 1))
+  (let* ((x1 (- (x pt) (mcref4 tx 0 3)))
+	 (y1 (- (y pt) (mcref4 tx 1 3)))
+	 (a00 (mcref4 tx 0 0))
+	 (a01 (mcref4 tx 0 1))
+	 (a10 (mcref4 tx 1 0))
+	 (a11 (mcref4 tx 1 1))
 	 (det (- (* a00 a11) (* a01 a10)))
 	 (detx 0)
 	 (dety 0))
@@ -207,12 +222,12 @@
 
 
 (defun invert-point2 (tx pt)
-  (let* ((x1 (- (x pt) (aref (mat3-m tx) 2 0)))
-	 (y1 (- (y pt) (aref (mat3-m tx) 2 1)))
-	 (a00 (aref (mat3-m tx) 0 0))
-	 (a01 (aref (mat3-m tx) 1 0))
-	 (a10 (aref (mat3-m tx) 0 1))
-	 (a11 (aref (mat3-m tx) 1 1))
+  (let* ((x1 (- (x pt) (aref (my/mat3-m tx) 2 0)))
+	 (y1 (- (y pt) (aref (my/mat3-m tx) 2 1)))
+	 (a00 (aref (my/mat3-m tx) 0 0))
+	 (a01 (aref (my/mat3-m tx) 1 0))
+	 (a10 (aref (my/mat3-m tx) 0 1))
+	 (a11 (aref (my/mat3-m tx) 1 1))
 	 (det (- (* a00 a11) (* a01 a10)))
 	 (detx 0)
 	 (dety 0))
@@ -260,7 +275,7 @@
 (defun pointer (array)
   (sap-alien (sb-sys:vector-sap (sb-ext:array-storage-vector array)) (* double)))
 
-(defstruct mat3
+(defstruct my/mat3
   (m (make-array '(3 3) :element-type 'double-float
 			:initial-contents '((1.0d0 0.0d0 0.0d0) (0.0d0 1.0d0 0.0d0) (0.0d0 0.0d0 1.0d0)))))
 
@@ -293,10 +308,49 @@
 
 
 
-(defun mat3* (a b)
-  (let* ((c (make-mat3))
+(defun my/mat3* (a b)
+  (let* ((c (make-my/mat3))
 	 (n 3))
     (sb-sys:with-pinned-objects (a b c)
-      (dgemm "n" "n" n n n 1d0 (pointer (mat3-m a)) n (pointer (mat3-m b)) n 0d0 (pointer (mat3-m c)) n))
+      (dgemm "n" "n" n n n 1d0 (pointer (my/mat3-m a)) n (pointer (my/mat3-m b)) n 0d0 (pointer (my/mat3-m c)) n))
     c))
+
+
+
+(declaim (ftype (function (my/mat3 my/mat3) my/mat3) my/mat3-mult))
+(defun my/mat3-mult (a b)
+  (declare (optimize (speed 3)))
+  (let* ((c (make-my/mat3))
+	 (n 3))
+    (dotimes (i n)
+      (dotimes (j n)
+	(setf (aref (my/mat3-m c) j i) 0.0d0)
+	(dotimes (k n)
+	  (incf (aref (my/mat3-m c) j i) (* (aref (my/mat3-m a) k i) (aref (my/mat3-m b) j k))))))
+    c))
+
+
+(declaim (ftype (function (my/mat3 my/mat3) my/mat3) my/mat3-mult))
+(defun my/mat3-mult-sub (a b)
+  ;;(declare (optimize (speed 3)))
+  (let* ((c (make-my/mat3))
+	 (n 3))
+    (dotimes (i n)
+      (dotimes (j n)
+	(setf (aref (my/mat3-m c) j i) 0.0d0)
+	(dotimes (k n)
+	  (incf (aref (my/mat3-m c) j i) (* (aref (my/mat3-m a) k i) (aref (my/mat3-m b) j k))))))
+    c))
+
+
+
+
+(defun foo* (a b)
+  (* a b))
+
+
+(declaim (ftype (function (double-float double-float) double-float) foo-opt*))
+(defun foo-opt* (a1 b1)
+  (declare (optimize (speed 3) (safety 0)))
+  (* a1 b1))
 
