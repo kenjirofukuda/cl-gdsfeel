@@ -40,8 +40,9 @@
 (in-package cl-gdsfeel/geom)
 
 
-(defclass <point> (point)
-  ())
+(defclass <point> ()
+  ((x :type double-float :reader x :initarg :x :initform 0.0d0)
+   (y :type double-float :reader y :initarg :y :initform 0.0d0)))
 
 
 (defmethod print-object ((object point) stream)
@@ -50,8 +51,10 @@
 
 
 (defun p (x y)
-  (assert (and (numberp x) (numberp y)))
-  (make-point x y '<point>))
+  (declare (optimize (speed 3) (safety 0)))
+  (declare (type double-float x y))
+					;(assert (and (numberp x) (numberp y)))
+  (make-instance '<point> :x x :y y))
 
 
 (defmethod p+ ((p1 <point>) (p2 <point>))
@@ -72,7 +75,7 @@
       (p (first object) (second object))))
 
 
-(defmethod as-point ((object point))
+(defmethod as-point ((object <point>))
   (p (x object) (y object)))
 
 

@@ -423,7 +423,7 @@
     (whell-zoom *viewport* cp delta)
     (unless *fast-drawing*
       (invalidate-canvas))
-					;(fire-fast-drawing)
+    (fire-fast-drawing)
     )
   iup:+default+)
 
@@ -532,7 +532,7 @@
   nil)
 
 
-(defun start-gds-thread ()
+(defun start-gds-thread (&key (profile nil))
   (let* ((thread-names (mapcar (lambda (th)
 				 (bt:thread-name th))
 			       (bt:all-threads)))
@@ -541,17 +541,19 @@
       (print "gds already running")
       (return-from start-gds-thread))
     (bt:make-thread (lambda ()
-		      ;; (sb-profile:profile
-		      ;;  "CL-GDSFEEL/IUP-GUI"
-		      ;;  "CL-GDSFEEL/MODEL"
-		      ;;  "CL-GDSFEEL/STREAM"
-		      ;;  "CL-GDSFEEL/GEOM"
-		      ;;  "2D-GEOMETRY"
-		      ;;  "NET.TUXEE.PATHS"
-		      ;;  "CLEM"
-		      ;;  )
+		      (when profile
+			(sb-profile:profile
+			 "CL-GDSFEEL/IUP-GUI"
+			 "CL-GDSFEEL/MODEL"
+			 "CL-GDSFEEL/STREAM"
+			 "CL-GDSFEEL/GEOM"
+			 "2D-GEOMETRY"
+			 "NET.TUXEE.PATHS"
+			 "CLEM"
+			 ))
 		      (entry-point)
-		      ;; (sb-profile:report)
+		      (when profile
+			(sb-profile:report))
 		      )
 		    :name "gds")))
 
