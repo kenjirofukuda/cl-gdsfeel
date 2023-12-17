@@ -46,8 +46,8 @@
    (w-scale :type double-float :initform 1.0d0 :accessor w-scale)
    (w-center-x :type double-float :initform 0.0d0 :accessor w-center-x)
    (w-center-y :type double-float :initform 0.0d0 :accessor w-center-y)
-   (_transform :type (or mat4 null) :initform nil :accessor _transform)
-   (_basic-transform :type (or mat4 null) :initform nil :accessor _basic-transform)
+   (_transform :type (or mat3 null) :initform nil :accessor _transform)
+   (_basic-transform :type (or mat3 null) :initform nil :accessor _basic-transform)
    (_transform-stack :type list :initform nil :accessor _transform-stack)
    (device-pixel-convertor :type symbol :initform 'identity :accessor device-pixel-convertor)))
 
@@ -127,18 +127,13 @@
 
 
 (defun lookup-basic-transform (vp)
-  (let ((tx1 (mtranslation (vec (port-center-x vp)
-				(port-center-y vp)
-				0.0)))
-	(tx2 (mscaling (vec (w-scale vp)
-			    (w-scale vp)
-			    1.0)))
-	(tx3  (mtranslation (vec (- (w-center-x vp))
-				 (- (w-center-y vp))
-				 0.0))))
-    (m* tx1 tx2 tx3)
-    )
-  )
+  (let ((tx1 (m3translation (vec (port-center-x vp)
+				 (port-center-y vp))))
+	(tx2 (m3scaling (vec (w-scale vp)
+			     (w-scale vp))))
+	(tx3  (m3translation (vec (- (w-center-x vp))
+				  (- (w-center-y vp))))))
+    (m* tx1 tx2 tx3)))
 
 
 (defun lookup-basic-transform2 (vp)

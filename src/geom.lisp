@@ -36,7 +36,9 @@
 	   #:my/mat3-m
 	   #:my/mat3-mult
 	   #:set-affine-parameters
-	   )
+	   #:m3translation
+	   #:m3scaling
+	   #:m3rotation)
   )
 
 (in-package cl-gdsfeel/geom)
@@ -184,11 +186,11 @@
 ;;       (clem:transform-coord (x pt) (y pt) tx)
 ;;     (p xd yd)))
 
-;;(declaim (ftype (function (mat4 <point>) <point>) transform-point))
+;;(declaim (ftype (function (mat3 <point>) <point>) transform-point))
 (defun transform-point (tx pt)
-  (let ((m (m* tx (mtranslation (vec (x pt) (y pt) 0.0)))))
+  (let ((m (m* tx (m3translation (vec (x pt) (y pt))))))
     ;;(describe m)
-    (p (mcref4 m 0 3) (mcref4 m 1 3))
+    (p (mcref3 m 0 2) (mcref3 m 1 2))
     )
   )
 
@@ -202,14 +204,14 @@
 					;(print (my/mat3-m cm))
       (p (aref (my/mat3-m cm) 0 0) (aref (my/mat3-m cm) 0 1)))))
 
-;;(declaim (ftype (function (mat4 <point>) <point>) invert-point))
+;;(declaim (ftype (function (mat3 <point>) <point>) invert-point))
 (defun invert-point (tx pt)
-  (let* ((x1 (- (x pt) (mcref4 tx 0 3)))
-	 (y1 (- (y pt) (mcref4 tx 1 3)))
-	 (a00 (mcref4 tx 0 0))
-	 (a01 (mcref4 tx 0 1))
-	 (a10 (mcref4 tx 1 0))
-	 (a11 (mcref4 tx 1 1))
+  (let* ((x1 (- (x pt) (mcref3 tx 0 2)))
+	 (y1 (- (y pt) (mcref3 tx 1 2)))
+	 (a00 (mcref3 tx 0 0))
+	 (a01 (mcref3 tx 0 1))
+	 (a10 (mcref3 tx 1 0))
+	 (a11 (mcref3 tx 1 1))
 	 (det (- (* a00 a11) (* a01 a10)))
 	 (detx 0)
 	 (dety 0))
@@ -317,9 +319,9 @@
 
 
 
-(declaim (ftype (function (my/mat3 my/mat3) my/mat3) my/mat3-mult))
+;;(declaim (ftype (function (my/mat3 my/mat3) my/mat3) my/mat3-mult))
 (defun my/mat3-mult (a b)
-  (declare (optimize (speed 3)))
+  ;;(declare (optimize (speed 3)))
   (let* ((c (make-my/mat3))
 	 (n 3))
     (dotimes (i n)
@@ -330,7 +332,7 @@
     c))
 
 
-(declaim (ftype (function (my/mat3 my/mat3) my/mat3) my/mat3-mult))
+;;(declaim (ftype (function (my/mat3 my/mat3) my/mat3) my/mat3-mult))
 (defun my/mat3-mult-sub (a b)
   ;;(declare (optimize (speed 3)))
   (let* ((c (make-my/mat3))
@@ -343,14 +345,41 @@
     c))
 
 
+;;(in-package #:org.shirakumo.flare.matrix)
+
+(declaim (ftype (function (vec2) mat3) m3translation))
+(3d-matrices::define-ofun m3translation (v)
+  (mat 1 0 (vx2 v)
+       0 1 (vy2 v)
+       0 0 1))
+
+(declaim (ftype (function (vec2) mat3) m3scaling))
+(3d-matrices::define-ofun m3scaling (v)
+  (mat (vx2 v) 0 0
+       0 (vy2 v) 0
+       0 0       1))
 
 
-(defun foo* (a b)
-  (* a b))
+(declaim (inline %m3rotation))
+(defun %m3rotation (arr angle)
+  (declare (type (simple-array single-float (9)) arr))
+  (declare (optimize speed (safety 0)))
+  ;; https://joombig.com/sqlc/3D-Rotation-Algorithm-about-arbitrary-axis-with-CC-code-tutorials-advance
+  (let* ((angle (3d-matrices::ensure-float angle))
+         (c (cos angle))
+         (s (sin angle)))
+    (macrolet ((%mat (&rest els)
+                 `(progn ,@(loop for el in els
+                                 for i from 0
+                                 collect `(setf (aref arr ,i) (3d-matrices::ensure-float ,el))))))
+      (%mat c (- s) 0
+            s c 0
+            0 0 1))))
 
 
-(declaim (ftype (function (double-float double-float) double-float) foo-opt*))
-(defun foo-opt* (a1 b1)
-  (declare (optimize (speed 3) (safety 0)))
-  (* a1 b1))
 
+(declaim (ftype (function (real) mat3) m3rotation))
+(3d-matrices::define-ofun m3rotation (angle)
+  (let ((mat (mat3)))
+    (%m3rotation (marr3 mat) angle)
+    mat))

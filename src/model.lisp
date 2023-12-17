@@ -377,20 +377,16 @@
 
 
 (defmethod lookup-affine-transform ((reference <reference>))
-  (let ((mat (mtranslation (vec (first (xy reference))
-				(second (xy reference))
-				0.0))))
-    (nmscale mat (vec (mag reference)
-		      (mag reference)
-		      1.0))
-    (nmrotate mat +vz+ (* +radians-per-degree+ (angle reference)))
+  (let* ((tx1 (m3translation (vec (first (xy reference))
+				  (second (xy reference)))))
+	 (tx2 (m3scaling (vec (mag reference)
+			      (mag reference))))
+	 (tx3 (m3rotation  (* +radians-per-degree+ (angle reference))))
+	 (mat (m* tx1 tx2 tx3)))
     (when (reflected-p reference)
-      (setf (mcref4 mat 0 1) (- (mcref4 mat 0 1)))
-      (setf (mcref4 mat 1 1) (- (mcref4 mat 1 1)))
-      )
-    mat
-    )
-  )
+      (setf (mcref3 mat 0 1) (- (mcref3 mat 0 1)))
+      (setf (mcref3 mat 1 1) (- (mcref3 mat 1 1))))
+    mat))
 
 
 (defmethod lookup-affine-transform2 ((reference <reference>))
@@ -424,9 +420,8 @@
   (let ((tx (ref-transform aref))
 	(offsets (lookup-offsets aref)))
     (mapcar (lambda (offset)
-	      (let ((otx (mtranslation (vec (x offset) 
-					    (y offset)
-					    0.0))))
+	      (let ((otx (m3translation (vec (x offset) 
+					     (y offset)))))
 		(m* tx otx)))
 	    offsets)))
 
