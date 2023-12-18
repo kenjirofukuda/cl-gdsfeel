@@ -91,11 +91,11 @@
    :repeated-transform2
    :ref-structure
    :structure-named
-   :calc-bbox)
-  )
+   :calc-bbox))
 
 
 (in-package :cl-gdsfeel/model)
+
 
 (defun alloc-typed-vector (type)
   (make-array
@@ -104,6 +104,7 @@
    :initial-contents #()
    :fill-pointer 0
    :adjustable t))
+
 
 (defun vector-last (v)
   (elt v (1- (length v))))
@@ -167,9 +168,6 @@
 (defclass <reference> (<element> <strans>)
   ((_ref-transform
     :type (or affine-transformation null)
-    :initform nil)
-   (_ref-transform2
-    :type (or my/mat3 null)
     :initform nil)))
 
 
@@ -185,9 +183,6 @@
    (column-count :type integer :initform 0 :accessor column-count)
    (_repeated-transform
     :type (or affine-transformation null)
-    :initform nil)
-   (_repeated-transform2
-    :type (or mat3 null)
     :initform nil)))
 
 
@@ -209,6 +204,7 @@
     :initform nil
     :accessor elements)))
 
+
 (defclass <library> (<named-container>)
   ((user-unit
     :type double-float
@@ -222,8 +218,8 @@
     :accessor structures)
    (_structure-map
     :type hash-table
-    :initform (make-hash-table))
-   ))
+    :initform (make-hash-table))))
+
 
 (defconstant +radians-per-degree+  0.017453292519943295d0)
 
@@ -310,22 +306,10 @@
   (slot-value element '_ref-transform))
 
 
-(defmethod ref-transform2 ((element <reference>))
-  (when (null (slot-value element '_ref-transform2))
-    (setf (slot-value element '_ref-transform2) (lookup-affine-transform2 element)))
-  (slot-value element '_ref-transform2))
-
-
 (defmethod repeated-transform ((element <aref>))
   (when (null (slot-value element '_repeated-transform))
     (setf (slot-value element '_repeated-transform) (lookup-repeated-transform element)))
   (slot-value element '_repeated-transform))
-
-
-(defmethod repeated-transform2 ((element <aref>))
-  (when (null (slot-value element '_repeated-transform2))
-    (setf (slot-value element '_repeated-transform2) (lookup-repeated-transform2 element)))
-  (slot-value element '_repeated-transform2))
 
 
 (defmethod calc-bbox ((structure <structure>))
@@ -362,18 +346,6 @@
       (reflected-p strans)
       (abs-mag-p strans)
       (abs-angle-p strans)))
-
-
-;; (defmethod lookup-affine-transform ((reference <reference>))
-;;   (let ((m (clem:make-affine-transformation :x-shift (first (xy reference))
-;; 					    :y-shift (second (xy reference))
-;; 					    :x-scale (mag reference)
-;; 					    :y-scale (mag reference)
-;; 					    :theta (* +radians-per-degree+ (angle reference)))))
-;;     (when (reflected-p reference)
-;;       (setf (mref m 0 1) (- (mref m 0 1)))
-;;       (setf (mref m 1 1) (- (mref m 1 1))))
-;;     m))
 
 
 (defmethod lookup-affine-transform ((reference <reference>))
@@ -423,17 +395,6 @@
 	      (let ((otx (m3translation (vec (x offset) 
 					     (y offset)))))
 		(m* tx otx)))
-	    offsets)))
-
-
-(defmethod lookup-repeated-transform2 ((aref <aref>))
-  (let ((tx (ref-transform2 aref))
-	(offsets (lookup-offsets aref)))
-    (mapcar (lambda (offset)
-	      (let ((otx (make-my/mat3)))
-		(setf (aref (my/mat3-m otx) 2 0) (x offset))
-		(setf (aref (my/mat3-m otx) 2 1) (y offset))
-		(my/mat3-mult tx otx)))
 	    offsets)))
 
 
@@ -491,11 +452,6 @@
   (as-sorted-uniq (flatten (mapcar (lambda (s)
 				     (used-layer-numbers s))
 				   (structures library)))))
-
-
-;; (defmethod print-tree ((library <library>))
-;;   (dolist (each (no-leaf-children library))
-;;     ))
 
 
 (defmethod resolved ((structure <structure>))

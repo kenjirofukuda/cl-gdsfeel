@@ -165,14 +165,17 @@
         (- result)
         result)))
 
+
 (defun fix-year (v)
   (if (and (> 100 v) (<= 60 v) (>= 99))
       (+ v 1900)
       v))
 
+
 (defun fix-ce-value (v user-unit)
   (let ((ratio (rationalize user-unit)))
     (+ 0.0d0 (* (truncate (/ v ratio)) ratio))))
+
 
 (defun decode-local-time (octet-array)
   (assert (= (length octet-array) 6))
@@ -194,6 +197,7 @@
   (check-type inform <inform>)
   (vector-last (structures (library inform))))
 
+
 (defun set-container-timestamp (container body-data)
   (check-type container <named-container>)
   (assert (and (typep body-data 'sequence) (= 12 (length body-data))))
@@ -202,10 +206,12 @@
   (setf (last-accessed container)
         (decode-local-time (subseq body-data 6 12))))
 
+
 (defun symbol-to-class (symbol)
   (find-symbol (concatenate
 		'string
 		"<" (subseq (string symbol) 1) ">") :cl-gdsfeel/model))
+
 
 (defmethod run ((inform <inform>))
   (if (null (records inform))
@@ -300,12 +306,6 @@
 	   (setf (column-count element) (first body-data))
 	   (setf (row-count element) (second body-data)))
 	  
-          ;; ((_strans elflags strclass presentation)
-          ;;  (recout)
-          ;;  (print record)
-          ;;  (format t "~%")
-          ;;  (format t "~19,,' ,4:B" body-data))
-          
           (_string
            (setf (contents element) body-data))
 	  
@@ -317,19 +317,10 @@
           ))))
   inform)
 
-;;; use alexandria's
-;; (defun random-elt (sequence)
-;;   (elt sequence (random (length sequence))))
 
 (defun random-element (inform)
   (random-elt (children (random-elt (children (library inform))))))
 
-;; (defun entry ()
-;;   (setq *inform* (make-instance '<inform> :path *sample-sf*))
-;;   (run *inform*))
-
-
-;;;; ----------------- debugging IN  ----------------
 
 (defun one-element-as-atomic (sequence)
   "'(0 1 2) => '(0 1 2)
@@ -337,6 +328,7 @@
   (if (= (length sequence) 1)
       (elt sequence 0)
       sequence))
+
 
 (defgeneric body-data (type body-bytes)
   (:documentation "generic body data"))
@@ -410,32 +402,6 @@
   (handle-record (header-symbol bytes) bytes))
 
 
-;;;; ----------------- debugging OUT ----------------
-
-;;; (dolist (each *all-records*) (handle-record each))
-
-;; (defparameter *sample-sf* (truename "~/Nextcloud/gds/GDSreader.0.3.2/test.gds"))
-
-;; (defparameter *inform* nil)
-
-;; (defparameter *fd* nil)
-
-;; (defparameter *all-records* nil)
-
-;; (defparameter *step-index* -1)
-
-;; (defun open-gds ()
-;;   (setq *fd* (open *sample-sf* :element-type '(unsigned-byte 8))))
-
-
-;; (defun close-gds ()
-;;   (close *fd*))
-
-
-;; (defun reset-gds ()
-;;   (file-position *fd* 0))
-
-
 (defun read-loop (fd)
   (do ((eof 0) (bytes) (records))
       ((equalp eof 1) records)
@@ -445,25 +411,10 @@
         (setq eof 1))))
 
 
-;; (defun ensure-all-records ()
-;;   (setq *all-records* nil)
-;;   (with-open-file (f *sample-sf* :element-type '(unsigned-byte 8))
-;;     (setq *all-records* (reverse (read-loop f)))
-;;     nil))
-
-
-;; (defun next-record ()
-;;   (if (null *all-records*)
-;;       (ensure-all-records))
-;;   (if (>= (length *all-records*) (- *step-index* 1))
-;;       (nth (incf *step-index*) *all-records*)
-;;       'nil))
-
-;; ---- Utilities -------
-
 (defun file-size (path)
   (let ((stat (osicat-posix:stat (pathname  path))))
     (osicat-posix:stat-size stat)))
+
 
 (defun stream-format-p (path)
   (and (uiop:file-exists-p path)
@@ -471,5 +422,5 @@
        (with-open-file (s path :element-type '(unsigned-byte 8))
 	 (let ((len (nibbles:read-ub16/be s)))
 	   (file-position s 0)
-	   (and (= 6 len)    ;; 2 + size of header
+	   (and (= 6 len) ;; 2 + size of header
 		(eq 'header (header-symbol (next-bytes s))))))))

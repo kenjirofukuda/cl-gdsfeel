@@ -29,6 +29,7 @@
 (defvar *layer-color-assoc* nil)
 (defvar *fast-drawing* nil)
 (defvar *thread-fast-drawing* nil)
+
 (defparameter *bool-keys*
   '(pixel-perfect
     trace-button-event
@@ -41,8 +42,7 @@
   (cd:use-context-plus t)
   (setup-bool-table)
   (iup:with-iup ()
-    (let* (
-	   (item-open (iup:item :title (format nil "&Open...~CCtrl+O" #\Tab)
+    (let* ((item-open (iup:item :title (format nil "&Open...~CCtrl+O" #\Tab)
 				:image "IUP_FileOpen"
 				:action 'open-stream-format-dialog))
 	   (item-layout (iup:item :title (format nil "&Layout ~CCtrl+L" #\Tab)
@@ -99,11 +99,11 @@
 	     (iup:hbox (list (iup:frame (iup:label :expand :horizontal
 						   :handlename "statusbar")))))
 	   (vbox
-             (iup:vbox (list hbox statusbar)
+	     (iup:vbox (list hbox statusbar)
 		       :gap "5"
 		       :margin "5x5"))
 	   (dialog
-             (iup:dialog vbox :title +default-window-title+
+	     (iup:dialog vbox :title +default-window-title+
 			      :size "halfxhalf"
 			      :menu "menu"
 			      :handlename "dialog"
@@ -125,7 +125,7 @@
 
 (defun make-bool-item (sym &optional (initial :off))
   (let* ((str (string-downcase (symbol-name sym)))
-	 (cb-name (read-from-string (concatenate 'string (package-name *package*) "::"   (concatenate 'string str "-cb"))))
+	 (cb-name (read-from-string (concatenate 'string (package-name *package*) "::" (concatenate 'string str "-cb"))))
 	 (title (substitute #\space #\- str)))
     (iup:item :title title
 	      :autotoggle :yes
@@ -345,10 +345,7 @@
 (defmethod ad/stroke-cd ((element <aref>) canvas)
   (dolist (each (repeated-transform element)) 
     (with-transform *viewport* each
-      (stroke-structure (ref-structure element) canvas #'ad/stroke-cd)))
-  ;;(setf (cd:foreground canvas) cd:+white+)
-  ;;(ad/stroke-bbox (data-bbox element) canvas)
-  )
+      (stroke-structure (ref-structure element) canvas #'ad/stroke-cd))))
 
 
 (defun stroke-structure (structure canvas &optional (stroke-proc #'ad/stroke-cd))
@@ -387,11 +384,8 @@
     (setf *thread-fast-drawing* nil))
   (setf *thread-fast-drawing* (bt:make-thread (lambda ()
 						(sleep 0.2)
-						(setf *fast-drawing* nil)
-						)
-					      :name "first-drawing"))
-  
-  )
+						(setf *fast-drawing* nil))
+					      :name "first-drawing")))
 
 
 (defun cd-point (x y)
@@ -425,8 +419,7 @@
     (whell-zoom *viewport* cp delta)
     (unless *fast-drawing*
       (invalidate-canvas))
-    (fire-fast-drawing)
-    )
+    (fire-fast-drawing))
   iup:+default+)
 
 
@@ -551,12 +544,10 @@
 			 "CL-GDSFEEL/GEOM"
 			 "2D-GEOMETRY"
 			 "NET.TUXEE.PATHS"
-			 "3D-MATRICES"
-			 ))
+			 "3D-MATRICES"))
 		      (entry-point)
 		      (when profile
-			(sb-profile:report))
-		      )
+			(sb-profile:report)))
 		    :name "gds")))
 
 

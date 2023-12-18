@@ -36,7 +36,9 @@
 
 (in-package :cl-gdsfeel/viewport)
 
+
 (declaim (inline bbox-width bbox-height))
+
 
 (defclass <viewport> ()
   ((port-width :type integer :initform 0 :initarg :width :accessor port-width)
@@ -112,20 +114,6 @@
     (2point->bbox min-pt max-pt)))
 
 
-;; (defun lookup-basic-transform (vp)
-;;   (let* ((tx1 (clem:make-affine-transformation
-;; 	       :x-shift (port-center-x vp)
-;; 	       :y-shift (port-center-y vp)))
-;; 	 (tx2 (clem:make-affine-transformation
-;; 	       :x-scale (w-scale vp)
-;; 	       :y-scale (w-scale vp)))
-;; 	 (tx3 (clem:make-affine-transformation
-;; 	       :x-shift (- (w-center-x vp))
-;; 	       :y-shift (- (w-center-y vp)))))
-;;     (clem:m* tx1 tx2 tx3)))
-
-
-
 (defun lookup-basic-transform (vp)
   (let ((tx1 (m3translation (vec (port-center-x vp)
 				 (port-center-y vp))))
@@ -134,20 +122,6 @@
 	(tx3  (m3translation (vec (- (w-center-x vp))
 				  (- (w-center-y vp))))))
     (m* tx1 tx2 tx3)))
-
-
-(defun lookup-basic-transform2 (vp)
-  (let* ((tx1 (make-my/mat3))
-	 (tx2 (make-my/mat3))
-	 (tx3 (make-my/mat3)))
-    (set-affine-parameters (my/mat3-m tx1) :x-shift (port-center-x vp)
-					   :y-shift (port-center-y vp))
-    (set-affine-parameters (my/mat3-m tx2) :x-scale (w-scale vp)
-					   :y-scale (w-scale vp))
-    (set-affine-parameters (my/mat3-m tx3) :x-shift (- (w-center-x vp))
-					   :y-shift (- (w-center-y vp)))
-    (my/mat3-mult (my/mat3-mult tx1 tx2) tx3)))
-
 
 
 (defun basic-transform (vp)
@@ -160,13 +134,6 @@
   (let ((tx (basic-transform vp)))
     (dolist (m (reverse (_transform-stack vp)))
       (setf tx (m* tx m)))
-    tx))
-
-
-(defun lookup-final-transform2 (vp)
-  (let ((tx (basic-transform vp)))
-    (dolist (m (reverse (_transform-stack vp)))
-      (setf tx (my/mat3-mult tx m)))
     tx))
 
 
@@ -189,6 +156,7 @@
 	(setf (_transform-stack vp) (cdr (_transform-stack vp)))
 	(damage-transform vp)
 	result)))
+
 
 (defun port-stack-empty-p (vp)
   (zerop (length (_transform-stack vp))))
@@ -215,21 +183,8 @@
     (distance (x p1) (y p1) (x p2) (y p2))))
 
 
-;; (defmethod world->device ((vp <viewport>) (pt <point>))
-;;   (multiple-value-bind (xd yd)
-;;       (clem:transform-coord (x pt) (y pt) (final-transform vp))
-;;     (p (funcall (device-pixel-convertor vp) xd)
-;;        (funcall (device-pixel-convertor vp) yd))))
-
-
 (defmethod world->device ((vp <viewport>) (pt <point>))
   (let ((dest (transform-point (final-transform vp) pt)))
-    (p (funcall (device-pixel-convertor vp) (x dest))
-       (funcall (device-pixel-convertor vp) (y dest)))))
-
-
-(defmethod world->device2 ((vp <viewport>) (pt <point>))
-  (let ((dest (transform-point2 (final-transform vp) pt)))
     (p (funcall (device-pixel-convertor vp) (x dest))
        (funcall (device-pixel-convertor vp) (y dest)))))
 
@@ -240,24 +195,8 @@
     (2point->bbox origin corner)))
 
 
-(defmethod world->device2 ((vp <viewport>) (bbox <bounding-box>))
-  (let ((origin (world->device2 vp (bbox-origin bbox)))
-	(corner (world->device2 vp (bbox-corner bbox))))
-    (2point->bbox origin corner)))
-
-
-;; (defmethod device->world ((vp <viewport>) (pt <point>))
-;;   (let ((inv (clem:invert-matrix (final-transform vp))))
-;;     (multiple-value-bind (xw yw)
-;; 	(clem:transform-coord (x pt) (y pt) inv))))
-
-
 (defmethod device->world ((vp <viewport>) (pt <point>))
   (invert-point (final-transform vp) pt))
-
-
-(defmethod device->world2 ((vp <viewport>) (pt <point>))
-  (invert-point2 (final-transform vp) pt))
 
 
 (defun whell-zoom (vp port-pt direction)
@@ -270,13 +209,3 @@
   (damage-transform vp))
 
 
-(defvar *r* nil)
-(defvar *vp* nil)
-
-(defun setup ()
-  (setq *r* (make-bbox 0 0 640 480)) 
-  (setq *vp* (make-instance '<viewport> :width 640
-					:height 480))
-  (set-bounds *vp* *r*))
-
-(setup)
