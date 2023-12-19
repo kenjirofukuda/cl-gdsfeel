@@ -29,6 +29,7 @@
 (defvar *layer-color-assoc* nil)
 (defvar *fast-drawing* nil)
 (defvar *thread-fast-drawing* nil)
+(defvar *last-draw-timestamp* nil)
 
 (defparameter *bool-keys*
   '(pixel-perfect
@@ -41,6 +42,7 @@
 (defun main-window ()
   (cd:use-context-plus t)
   (setup-bool-table)
+  (setf *last-draw-timestamp* (local-time:now))
   (iup:with-iup ()
     (let* ((item-open (iup:item :title (format nil "&Open...~CCtrl+O" #\Tab)
 				:image "IUP_FileOpen"
@@ -124,8 +126,9 @@
 
 
 (defun make-bool-item (sym &optional (initial :off))
-  (let* ((str (string-downcase (symbol-name sym)))
-	 (cb-name (read-from-string (concatenate 'string (package-name *package*) "::" (concatenate 'string str "-cb"))))
+  (let* ((str (symbol-name sym))
+	 (*package* #.*package*)
+	 (cb-name (intern (string-upcase (concatenate 'string str "-cb")) *package*))
 	 (title (substitute #\space #\- str)))
     (iup:item :title title
 	      :autotoggle :yes
@@ -223,7 +226,7 @@
   (print (list text item state))
   (print nil)
   (when (zerop state)
-    (return-from struclist-action-cb iup:+ignore+))
+    (return-from struclist-action-cb iup:+default+))
   (activate-structure (child-named (library *inform*) text))
   iup:+default+)
 
@@ -272,7 +275,7 @@
 
 
 (defun invalidate-canvas ()
-  #-windows (iup:redraw (iup:handle "canvas") t) ;; bug fix
+  #-windows (iup:redraw (iup:handle "dialog") t) ;; bug fix
   #+windows (iup:redraw (iup:handle "canvas") t))
 
 
@@ -324,7 +327,7 @@
 
 
 (defun mark-world (canvas wpt)
-  (let ((dp (world->device2 *viewport* (as-point wpt))))
+  (let ((dp (world->device *viewport* (as-point wpt))))
     (cd:mark canvas (x dp) (y dp))))
 
 
@@ -437,9 +440,16 @@
 
 (defun canvas-redraw-cb (handle x y)
   (declare (ignore handle x y))
-  (cd:activate *canvas*)
-  (draw-structure *structure* *canvas*)
-  (cd:flush *canvas*)
+  (print "-------------------------------------------")
+  (when *last-draw-timestamp*
+    (let* ((diff (local-time:timestamp-difference (local-time:now) *last-draw-timestamp*)))
+      (print diff)
+      (when (> diff 0.1d0)
+	(time (progn
+		(cd:activate *canvas*)
+		(draw-structure *structure* *canvas*)
+		(cd:flush *canvas*)))
+	(setf *last-draw-timestamp* (local-time:now)))))
   iup:+default+)
 
 
