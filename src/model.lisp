@@ -145,7 +145,8 @@
 
 (defclass <element> (<tree-node>)
   ((structure :type <structure> :accessor structure)
-   (xy :type list :initform nil :accessor xy)))
+   (xy :type list :initform nil :accessor xy)
+   (_xy-vecs :type list :initform nil :accessor _xy-vecs)))
 
 
 (defclass <primitive> (<element>)
@@ -158,7 +159,8 @@
 
 (defclass <path> (<primitive>)
   ((width    :type single-float :initform 0.0 :accessor path-width)
-   (pathtype :type integer :initform 0 :accessor pathtype)))
+   (pathtype :type integer :initform 0 :accessor pathtype)
+   (_outline-vecs :type list :initform nil :accessor _outline-vecs)))
 
 
 (defclass <text> (<primitive> <strans>)
@@ -244,7 +246,9 @@
 
 
 (defmethod points ((element <element>))
-  (mapcar #'as-point (coords element)))
+  (unless (_xy-vecs element)
+    (setf (_xy-vecs element) (mapcar #'as-point (coords element))))
+  (_xy-vecs element))
 
 
 (defun path-outline-coords (coords path-width pathtype)
@@ -269,7 +273,11 @@
 
 
 (defun outline-coords (path)
-  (path-outline-coords (coords path) (path-width path) (pathtype path)))
+  (unless (_outline-vecs path)
+    (setf (_outline-vecs path)
+	  (mapcar #'as-point
+		  (path-outline-coords (coords path) (path-width path) (pathtype path)))))
+  (_outline-vecs path))
 
 
 (defgeneric calc-bbox (object))
