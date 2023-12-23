@@ -32,6 +32,7 @@
 (defvar *thread-fast-drawing* nil)
 (defvar *last-draw-timestamp* nil)
 (defvar *timer* nil)
+(defvar *selected-drawing* 0)
 
 (defparameter *bool-keys*
   '(pixel-perfect
@@ -242,6 +243,7 @@
 
 (defun activate-structure (structure)
   (setq *structure* structure)
+  (setq *element* nil)
   (when *viewport* 
     (set-bounds *viewport* (data-bbox structure)))
   (invalidate-canvas)
@@ -315,7 +317,10 @@
 
 
 (defmethod ad/stroke-cd :before ((element <primitive>) canvas)
-  (setf (cd:foreground canvas) (layer-color (layer element))))
+  (setf (cd:foreground canvas)
+	(if (> *selected-drawing* 0)
+	    cd:+white+
+	    (layer-color (layer element)))))
 
 
 (defmethod ad/stroke-cd ((element <boundary>) canvas)
@@ -350,28 +355,43 @@
   (mark-world canvas (first (points element))))
 
 
+(defmethod ad/stroke-cd :before ((element <sref>) canvas)
+  (when (and *element* (eq *element* element))
+    (setf (cd:foreground canvas) cd:+white+)))
+
+
 (defmethod ad/stroke-cd ((element <sref>) canvas)
   (with-transform *viewport* (ref-transform element)
-    (stroke-structure (ref-structure element) canvas #'ad/stroke-cd)))
+    (stroke-structure (ref-structure element)
+		      canvas
+		      #'ad/stroke-cd)))
 
 
 (defmethod ad/stroke-cd ((element <aref>) canvas)
   (dolist (each (repeated-transform element)) 
     (with-transform *viewport* each
-      (stroke-structure (ref-structure element) canvas #'ad/stroke-cd))))
+      (stroke-structure (ref-structure element)
+			canvas
+			#'ad/stroke-cd))))
 
 
 (defun stroke-structure (structure canvas &optional (stroke-proc #'ad/stroke-cd))
   (let ((elist (coerce (children structure) 'list)))
     (when (port-stack-empty-p *viewport*)
-      (setf elist (clip-elements (get-bounds *viewport*) elist)))
+      (setf elist (clip-elements (get-bounds *viewport*) elist))
+      (when *element*
+	(setf elist (remove-if (lambda (each) (eq each *element*)) elist))))
     (dolist (each elist)
       (let* ((long-side (max (bbox-width (data-bbox each))
 			     (bbox-height (data-bbox each))))
 	     (pix-size (device-size *viewport* long-side))
 	     (drawable (> pix-size (if *fast-drawing* 10.0 2.0))))
 	(when drawable
-	  (funcall stroke-proc each canvas))))))
+	  (funcall stroke-proc each canvas))))
+    (when (and (port-stack-empty-p *viewport*) *element*)
+      (incf *selected-drawing*)
+      (funcall stroke-proc *element* canvas)
+      (decf *selected-drawing*))))
 
 
 (defun clip-elements (bbox elst)
