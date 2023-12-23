@@ -450,11 +450,12 @@
 
 (defun canvas-redraw-cb (handle x y)
   (declare (ignore handle x y))
-  (print "-------------------------------------------")
   (when (and *structure* *last-draw-timestamp*)
     (let* ((diff (local-time:timestamp-difference (local-time:now) *last-draw-timestamp*)))
-      (print diff)
+      (format t "~a~%" "-------------------------------------------")
       (print (name *structure*))
+      (print diff)
+      (format t "~%")
       (when (> diff 0.1d0)
 	(time (progn
 		(cd:activate *canvas*)
