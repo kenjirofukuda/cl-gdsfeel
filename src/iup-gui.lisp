@@ -36,6 +36,7 @@
 
 (defparameter *bool-keys*
   '(pixel-perfect
+    trace-drawing
     trace-button-event
     trace-motion-event
     trace-wheel-event))
@@ -157,6 +158,11 @@
 	    'truncate
 	    'identity))
   (invalidate-canvas)
+  iup:+default+)
+
+
+(defun trace-drawing-cb (handle)
+  (setf (gethash 'trace-drawing *bool-table*) (item-checked handle))
   iup:+default+)
 
 
@@ -283,7 +289,8 @@
 
 (defun activate-element (element)
   (setq *element* element)
-  (invalidate-canvas))
+  (invalidate-canvas)
+  #+linux (setf (iup:attribute *timer* :run) "YES"))
 
 
 (defun invalidate-canvas ()
@@ -417,7 +424,9 @@
     (setf *thread-fast-drawing* nil))
   (setf *thread-fast-drawing* (bt:make-thread (lambda ()
 						(sleep 0.2)
-						(setf *fast-drawing* nil))
+						(setf *fast-drawing* nil)
+						(invalidate-canvas)
+						(setf (iup:attribute *timer* :run) "YES"))
 					      :name "first-drawing")))
 
 
@@ -471,16 +480,21 @@
 (defun canvas-redraw-cb (handle x y)
   (declare (ignore handle x y))
   (when (and *structure* *last-draw-timestamp*)
-    (let* ((diff (local-time:timestamp-difference (local-time:now) *last-draw-timestamp*)))
-      (format t "~a~%" "-------------------------------------------")
-      (print (name *structure*))
-      (print diff)
-      (format t "~%")
+    (let* ((diff (local-time:timestamp-difference (local-time:now) *last-draw-timestamp*))
+	   (trace-on (gethash 'trace-drawing *bool-table*)))
+      (when trace-on
+	(format t "~a~%" "-------------------------------------------")
+	(print (name *structure*))
+	(print diff)
+	(format t "~%"))
       (when (> diff 0.1d0)
-	(time (progn
-		(cd:activate *canvas*)
-		(draw-structure *structure* *canvas*)
-		(cd:flush *canvas*)))
+	(let ((drawproc #'(lambda ()
+			    (cd:activate *canvas*)
+			    (draw-structure *structure* *canvas*)
+			    (cd:flush *canvas*))))
+	  (if trace-on
+	      (time (funcall drawproc))
+	      (funcall drawproc)))
 	(setf *last-draw-timestamp* (local-time:now)))))
   iup:+default+)
 
