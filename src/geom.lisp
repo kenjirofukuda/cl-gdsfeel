@@ -8,9 +8,7 @@
 	#:cl-geometry2
 	#:3d-vectors
 	#:3d-matrices)
-  (:export #:<point>
-	   #:p
-	   #:as-point
+  (:export #:as-point
 	   #:<transform>
 	   #:<bounding-box>
 	   #:bbox-height
@@ -36,28 +34,6 @@
 
 (declaim (inline bbox-width bbox-height))
 
-(defclass <point> ()
-  ((x :type double-float :reader x :initarg :x :initform 0.0d0)
-   (y :type double-float :reader y :initarg :y :initform 0.0d0)))
-
-
-(defmethod print-object ((object point) stream)
-  (print-unreadable-object (object stream :type nil)
-    (format stream "~a @ ~a" (x object) (y object))))
-
-
-(defun p (x y)
-  (declare (optimize (speed 3) (safety 0)))
-  (declare (type double-float x y))
-					;(assert (and (numberp x) (numberp y)))
-  (make-instance '<point> :x x :y y))
-
-
-(defmethod p+ ((p1 <point>) (p2 <point>))
-  (p (+ (x p1) (x p2))
-     (+ (y p1) (y p2))))
-
-
 (declaim (inline dotpairp))
 
 
@@ -71,12 +47,14 @@
 (defmethod as-point ((object sequence))
   (declare (inline dotpairp))
   (if (dotpairp object)
-      (p (car object) (cdr object))
-      (p (first object) (second object))))
+      (vec2 (3d-matrices::ensure-float (car object))
+	    (3d-matrices::ensure-float (cdr object)))
+      (vec2 (3d-matrices::ensure-float (first object))
+	    (3d-matrices::ensure-float (second object)))))
 
 
-(defmethod as-point ((object <point>))
-  (p (x object) (y object)))
+(defmethod as-point ((object vec2))
+  object)
 
 
 (defclass <bounding-box> (bounding-box) ())
@@ -112,10 +90,10 @@
 	 (ymax (- unit)))
     (dolist (each points)
       (let* ((pt (as-point each)))
-	(setq xmin (min xmin (x pt)))
-	(setq xmax (max xmax (x pt)))
-	(setq ymin (min ymin (y pt)))
-	(setq ymax (max ymax (y pt)))))
+	(setq xmin (min xmin (vx2 pt)))
+	(setq xmax (max xmax (vx2 pt)))
+	(setq ymin (min ymin (vy2 pt)))
+	(setq ymax (max ymax (vy2 pt)))))
     (make-bbox xmin ymin xmax ymax)))
 
 
@@ -148,38 +126,38 @@
 
 
 (defmethod bbox-mid ((bbox <bounding-box>))
-  (p (bbox-mid-x bbox) (bbox-mid-y bbox)))
+  (vec2 (bbox-mid-x bbox) (bbox-mid-y bbox)))
 
 
 (defmethod bbox-origin ((bbox <bounding-box>))
   (with-slots (x-min y-min) bbox
-    (p x-min y-min)))
+    (vec2 x-min y-min)))
 
 
 (defmethod bbox-corner ((bbox <bounding-box>))
   (with-slots (x-max y-max) bbox
-    (p x-max y-max)))
+    (vec2 x-max y-max)))
 
 
 (defmethod bbox-points ((bbox <bounding-box>))
   (with-slots (x-min y-min x-max y-max)  bbox
-    (list (p x-min y-min)
-	  (p x-min y-max)
-	  (p x-max y-max)
-	  (p x-max y-min))))
+    (list (vec2 x-min y-min)
+	  (vec2 x-min y-max)
+	  (vec2 x-max y-max)
+	  (vec2 x-max y-min))))
 
 
-;;(declaim (ftype (function (mat3 <point>) <point>) transform-point))
+(declaim (ftype (function (mat3 vec2) vec2) transform-point))
 (defun transform-point (tx pt)
-  (let ((m (m* tx (m3translation (vec (x pt) (y pt))))))
+  (let ((m (m* tx (m3translation pt))))
     ;;(describe m)
-    (p (mcref3 m 0 2) (mcref3 m 1 2))))
+    (vec2 (mcref3 m 0 2) (mcref3 m 1 2))))
 
 
-;;(declaim (ftype (function (mat3 <point>) <point>) invert-point))
+(declaim (ftype (function (mat3 vec2) vec2) invert-point))
 (defun invert-point (tx pt)
-  (let* ((x1 (- (x pt) (mcref3 tx 0 2)))
-	 (y1 (- (y pt) (mcref3 tx 1 2)))
+  (let* ((x1 (- (vx2 pt) (mcref3 tx 0 2)))
+	 (y1 (- (vy2 pt) (mcref3 tx 1 2)))
 	 (a00 (mcref3 tx 0 0))
 	 (a01 (mcref3 tx 0 1))
 	 (a10 (mcref3 tx 1 0))
@@ -188,11 +166,11 @@
 	 (detx 0)
 	 (dety 0))
     (when (zerop det)
-      (return-from invert-point (p 0 0)))
+      (return-from invert-point (vec2 0 0)))
     (setq det (/ 1.0d0 det))
     (setq detx (- (* x1 a11) (* a01 y1)))
     (setq dety (- (* a00 y1) (* x1 a10)))
-    (p (* detx det) (* detY det))))
+    (vec2 (* detx det) (* detY det))))
 
 
 ;;(in-package #:org.shirakumo.flare.matrix)

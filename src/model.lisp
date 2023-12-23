@@ -363,8 +363,8 @@
 
 (defmethod lookup-affine-transform2 ((reference <reference>))
   (let* ((m (make-my/mat3))
-	 (x (first (xy reference)))
-	 (y (second (xy reference)))
+	 (x (3d-vectors::ensure-float (first (xy reference))))
+	 (y (3d-vectors::ensure-float (second (xy reference))))
 	 (scale (mag reference))
 	 (theta (* +radians-per-degree+ (angle reference)))
 	 (rad-cos (* scale (cos theta)))
@@ -385,15 +385,14 @@
   (flatten (loop for x-index below (column-count aref)
 		 collect (loop
 			   for y-index below (row-count aref)
-			   collect (p (* x-index (x-step aref)) (* y-index (y-step aref)))))))
+			   collect (vec2 (* x-index (x-step aref)) (* y-index (y-step aref)))))))
 
 
 (defmethod lookup-repeated-transform ((aref <aref>))
   (let ((tx (ref-transform aref))
 	(offsets (lookup-offsets aref)))
     (mapcar (lambda (offset)
-	      (let ((otx (m3translation (vec (x offset) 
-					     (y offset)))))
+	      (let ((otx (m3translation offset)))
 		(m* tx otx)))
 	    offsets)))
 

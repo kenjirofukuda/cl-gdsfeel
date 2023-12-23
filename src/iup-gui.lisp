@@ -7,6 +7,7 @@
 	#:alexandria
 	#:cl-geometry2
 	#:cl-colors2
+	#:3d-vectors
 	#:cl-gdsfeel/geom
 	#:cl-gdsfeel/viewport
 	#:cl-gdsfeel/model
@@ -297,7 +298,7 @@
     (mapcar
      (lambda (wp)
        (let ((dp (world->device *viewport* (as-point wp))))
-	 (cd:vertex canvas (x dp) (y dp))))
+	 (cd:vertex canvas (vx2 dp) (vy2 dp))))
      points)))
 
 
@@ -337,7 +338,7 @@
 
 (defun mark-world (canvas wpt)
   (let ((dp (world->device *viewport* (as-point wpt))))
-    (cd:mark canvas (x dp) (y dp))))
+    (cd:mark canvas (vx2 dp) (vy2 dp))))
 
 
 (defun mark-world-points (canvas points)
@@ -401,7 +402,7 @@
 
 
 (defun cd-point (x y)
-  (p x (truncate (cd:invert-y-axis *canvas* y))))
+  (vec2 x (truncate (cd:invert-y-axis *canvas* y))))
 
 
 (defun canvas-motion-cb (handle x y status)
@@ -409,10 +410,10 @@
     (print (list :handle handle :x x :y y :status (iup:status-plist status))))
   (let ((cp (cd-point x y)))
     (set-status (with-output-to-string (s)
-		  (format s "(H: ~5d, V: ~5d)" (x cp) (y cp))
+		  (format s "(H: ~5d, V: ~5d)" (vx2 cp) (vy2 cp))
 		  (unless (null *viewport*)
 		    (let ((wp (device->world *viewport* cp)))
-		      (format s "   (X: ~10,4f, Y: ~10,4f)" (x wp) (y wp)))))))
+		      (format s "   (X: ~10,4f, Y: ~10,4f)" (vx2 wp) (vy2 wp)))))))
   iup:+default+)
 
 

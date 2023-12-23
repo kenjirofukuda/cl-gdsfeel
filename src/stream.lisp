@@ -4,6 +4,7 @@
 	#:flexi-streams
 	#:array-operations
 	#:local-time
+	#:3d-vectors
 	#:cl-geometry2
 	#:cl-gdsfeel/geom
 	#:cl-gdsfeel/model)
@@ -174,7 +175,7 @@
 
 (defun fix-ce-value (v user-unit)
   (let ((ratio (rationalize user-unit)))
-    (+ 0.0d0 (* (truncate (/ v ratio)) ratio))))
+    (+ 0.0 (* (truncate (/ v ratio)) ratio))))
 
 
 (defun decode-local-time (octet-array)
@@ -271,8 +272,8 @@
 	     (let* ((mat (ref-transform element))
 		    (col-point (invert-point mat (second (points element))))
 		    (row-point (invert-point mat (third (points element)))))
-	       (setf (x-step element) (fix-ce-value (/ (x col-point) (column-count element)) uunit))
-	       (setf (y-step element) (fix-ce-value (/ (y row-point) (row-count element)) uunit)))))
+	       (setf (x-step element) (fix-ce-value (/ (vx2 col-point) (column-count element)) uunit))
+	       (setf (y-step element) (fix-ce-value (/ (vy2 row-point) (row-count element)) uunit)))))
 	  
           (_layer
            (setf (layer element) body-data))

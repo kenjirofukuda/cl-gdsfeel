@@ -55,8 +55,8 @@
 
 
 (defun set-port-center (vp pt)
-  (setf (port-center-x vp) (truncate (x pt)))
-  (setf (port-center-y vp) (truncate (y pt)))
+  (setf (port-center-x vp) (truncate (vx2 pt)))
+  (setf (port-center-y vp) (truncate (vx2 pt)))
   (damage-transform vp))
 
 
@@ -68,7 +68,7 @@
 
 (defun reset-world (vp)
   (setf (w-scale vp) 1.0d0)
-  (setf (w-center vp) (p 0.0d0 0.0d0)))
+  (setf (w-center vp) (vec2 0.0 0.0)))
 
 
 (defun damage-transform (vp)
@@ -83,13 +83,13 @@
 
 
 (defmethod w-center ((vp <viewport>))
-  (p (w-center-x vp) (w-center-y vp)))
+  (vec2 (w-center-x vp) (w-center-y vp)))
 
 
 (defmethod (setf w-center) (value (vp <viewport>))
   (let ((pt (as-point value)))
-    (setf (slot-value vp 'w-center-x) (x pt))
-    (setf (slot-value vp 'w-center-y) (y pt))
+    (setf (slot-value vp 'w-center-x) (vx2 pt))
+    (setf (slot-value vp 'w-center-y) (vy2 pt))
     (damage-transform vp)
     pt))
 
@@ -109,8 +109,8 @@
 
 (defun get-bounds (vp)
   (let* ((tx (final-transform vp))
-	 (min-pt (invert-point tx (p 0 0)))
-	 (max-pt (invert-point tx (p (port-width vp) (port-height vp)))))
+	 (min-pt (invert-point tx (vec2 0.0 0.0)))
+	 (max-pt (invert-point tx (vec2 (port-width vp) (port-height vp)))))
     (2point->bbox min-pt max-pt)))
 
 
@@ -178,15 +178,15 @@
 
 
 (defun device-size (vp size)
-  (let ((p1 (world->device vp (p size size)))
-	(p2 (world->device vp (p 0 0))))
-    (distance (x p1) (y p1) (x p2) (y p2))))
+  (let ((p1 (world->device vp (vec2 size size)))
+	(p2 (world->device vp (vec2 0 0))))
+    (distance (vx2 p1) (vy2 p1) (vx2 p2) (vy2 p2))))
 
 
-(defmethod world->device ((vp <viewport>) (pt <point>))
+(defmethod world->device ((vp <viewport>) (pt vec2))
   (let ((dest (transform-point (final-transform vp) pt)))
-    (p (funcall (device-pixel-convertor vp) (x dest))
-       (funcall (device-pixel-convertor vp) (y dest)))))
+    (vec2 (funcall (device-pixel-convertor vp) (vx2 dest))
+	  (funcall (device-pixel-convertor vp) (vy2 dest)))))
 
 
 (defmethod world->device ((vp <viewport>) (bbox <bounding-box>))
@@ -195,13 +195,13 @@
     (2point->bbox origin corner)))
 
 
-(defmethod device->world ((vp <viewport>) (pt <point>))
+(defmethod device->world ((vp <viewport>) (pt vec2))
   (invert-point (final-transform vp) pt))
 
 
 (defun whell-zoom (vp port-pt direction)
-  (setf (port-center-x vp) (x port-pt))
-  (setf (port-center-y vp) (y port-pt))
+  (setf (port-center-x vp) (vx2 port-pt))
+  (setf (port-center-y vp) (vy2 port-pt))
   (let* ((mat (final-transform vp))
 	 (world-center (invert-point mat port-pt)))
     (setf (w-center vp) world-center)
