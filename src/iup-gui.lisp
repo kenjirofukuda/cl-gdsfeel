@@ -30,6 +30,7 @@
 (defvar *fast-drawing* nil)
 (defvar *thread-fast-drawing* nil)
 (defvar *last-draw-timestamp* nil)
+(defvar *timer* nil)
 
 (defparameter *bool-keys*
   '(pixel-perfect
@@ -110,7 +111,14 @@
 			      :menu "menu"
 			      :handlename "dialog"
 			      :shrink :yes
-			      :resize_cb 'dialog-resize-cb)))
+			      :resize_cb 'dialog-resize-cb))
+	   (timer (iup:timer :run "NO"
+			     :time 500
+			     :action_cb #'(lambda (self)
+					    (invalidate-canvas)
+					    (setf (iup:attribute self :run) "NO")
+					    iup:+default+))))
+      (setf *timer* timer)
       (setf (iup:handle "menu") menu)
       (iup:show dialog)
       (iup:main-loop))))
@@ -240,7 +248,8 @@
   (loop for each in (coerce (elements structure) 'list)
 	for i from 1
 	do (setf (iup:attribute (iup:handle "elementlist") i)
-		 (display-name each))))
+		 (display-name each)))
+  #+linux (setf (iup:attribute *timer* :run) "YES"))
 
 
 (defmethod display-name ((el <element>))
@@ -441,9 +450,10 @@
 (defun canvas-redraw-cb (handle x y)
   (declare (ignore handle x y))
   (print "-------------------------------------------")
-  (when *last-draw-timestamp*
+  (when (and *structure* *last-draw-timestamp*)
     (let* ((diff (local-time:timestamp-difference (local-time:now) *last-draw-timestamp*)))
       (print diff)
+      (print (name *structure*))
       (when (> diff 0.1d0)
 	(time (progn
 		(cd:activate *canvas*)
