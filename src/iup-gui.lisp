@@ -1,7 +1,6 @@
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (ql:quickload '("iup" "cd-context-plus" "cl-vectors" "bt-semaphore")))
 
-
 (defpackage :cl-gdsfeel/iup-gui
   (:use #:cl
 	#:alexandria
@@ -37,6 +36,7 @@
 (defparameter *bool-keys*
   '(pixel-perfect
     trace-drawing
+    trace-keypress-event
     trace-button-event
     trace-motion-event
     trace-wheel-event))
@@ -91,6 +91,7 @@
 			 :unmap_cb 'canvas-unmap-cb
 			 :motion_cb 'canvas-motion-cb
 			 :button_cb 'canvas-button-cb
+			 :keypress_cb 'canvas-keypress-cb
 			 :wheel_cb 'canvas-wheel-cb
 			 :action 'canvas-redraw-cb
 			 :handlename "canvas"))
@@ -181,6 +182,11 @@
   iup:+default+)
 
 
+(defun trace-keypress-event-cb (handle)
+  (setf (gethash 'trace-keypress-event *bool-table*) (item-checked handle))
+  iup:+default+)
+
+
 (defun set-status (msg)
   (setf (iup:attribute (iup:handle "statusbar") :title) msg))
 
@@ -246,12 +252,15 @@
   (activate-structure (child-named (library *inform*) text))
   iup:+default+)
 
+(defun view-fit ()
+  (when (and *viewport* *structure*)
+    (set-bounds *viewport* (data-bbox *structure*))))
+
 
 (defun activate-structure (structure)
   (setq *structure* structure)
   (setq *element* nil)
-  (when *viewport* 
-    (set-bounds *viewport* (data-bbox structure)))
+  (view-fit)
   (invalidate-canvas)
   (setf (iup:attribute (iup:handle "elementlist") 1) nil)
   (loop for each in (coerce (elements structure) 'list)
@@ -455,6 +464,39 @@
     (print (list :handle handle :button button :pressed pressed
 		 :x x :y y :status (iup:status-plist status))))
   iup:+default+)
+
+
+(defun canvas-keypress-cb (handle c press)
+  (when (gethash 'trace-keypress-event *bool-table*)
+    (print (list :handle handle :c c :press press)))
+  (when (zerop press)
+    (when (case c
+	    ;;; TODO literal to keycode constants
+	    ((65364 50)
+	     (view-move-down *viewport*)
+	     t)
+	    ((65362 56)
+	     (view-move-up *viewport*)
+	     t)
+	    ((65361 52)
+	     (view-move-left *viewport*)
+	     t)
+	    ((65363 54)
+	     (view-move-right *viewport*)
+	     t)
+	    ((65365 43)
+	     (view-zoom-double *viewport*)
+	     t)
+	    ((65366 45)
+	     (view-zoom-half *viewport*)
+	     t)
+	    ((65360 13 48)
+	     (view-fit)
+	     t)
+	    (otherwise
+	     nil))
+      (invalidate-canvas)))
+  iup:+ignore+)
 
 
 (defun canvas-wheel-cb (handle delta x y status)

@@ -32,7 +32,14 @@
 	   #:device-pixel-convertor
 	   #:whell-zoom
 	   #:port-stack-empty-p
-	   #:device-size))
+	   #:device-size
+	   #:view-move-ratio
+	   #:view-move-left
+	   #:view-move-right
+	   #:view-move-up
+	   #:view-move-down
+	   #:view-zoom-double
+	   #:view-zoom-half))
 
 (in-package :cl-gdsfeel/viewport)
 
@@ -48,6 +55,7 @@
    (w-scale :type double-float :initform 1.0d0 :accessor w-scale)
    (w-center-x :type double-float :initform 0.0d0 :accessor w-center-x)
    (w-center-y :type double-float :initform 0.0d0 :accessor w-center-y)
+   (view-move-ratio :type double-float :initform 0.25d0 :accessor view-move-ratio)
    (_transform :type (or mat3 null) :initform nil :accessor _transform)
    (_basic-transform :type (or mat3 null) :initform nil :accessor _basic-transform)
    (_transform-stack :type list :initform nil :accessor _transform-stack)
@@ -208,4 +216,31 @@
     (setf (w-scale vp) (* (w-scale vp) (+ 1.0 (* 0.125 direction)))))
   (damage-transform vp))
 
+(defun view-move-fraction (vp x-frac y-frac)
+  (let* ((w-box (get-bounds vp))
+	 (x-offset (* x-frac (bbox-width w-box)))
+	 (y-offset (* y-frac (bbox-height w-box))))
+    (setf (w-center vp) (vec2 (+ (w-center-x vp) x-offset)
+			      (+ (w-center-y vp) y-offset)))))
 
+(defun view-move-left (vp)
+  (with-slots ((ratio view-move-ratio)) vp
+    (view-move-fraction vp (- ratio) 0.0d0)))
+
+(defun view-move-right (vp)
+  (with-slots ((ratio view-move-ratio)) vp
+    (view-move-fraction vp ratio 0.0d0)))
+
+(defun view-move-up (vp)
+  (with-slots ((ratio view-move-ratio)) vp
+    (view-move-fraction vp 0.0d0 ratio)))
+
+(defun view-move-down (vp)
+  (with-slots ((ratio view-move-ratio)) vp
+    (view-move-fraction vp 0.0d0 (- ratio))))
+
+(defun view-zoom-double (vp)
+  (setf (w-scale vp) (* (w-scale vp) 2.0d0)))
+
+(defun view-zoom-half (vp)
+  (setf (w-scale vp) (* (w-scale vp) 0.5d0)))
