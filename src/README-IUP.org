@@ -12,7 +12,7 @@
   git clone https://github.com/lispnik/im.git
   git clone https://github.com/lispnik/tecgraf-libs.git
   cd tecgraf-libs/
-  ./update.sh
+  bash ./update.sh
   ls libs/
   ros config set dynamic-space-size 4096
 #+END_SRC

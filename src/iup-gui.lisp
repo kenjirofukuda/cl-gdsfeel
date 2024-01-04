@@ -327,7 +327,11 @@
   (setf (cd:foreground canvas)
 	(if (> *selected-drawing* 0)
 	    cd:+white+
-	    (layer-color (layer element)))))
+	    (layer-color (layer element))))
+  (setf (cd:line-width canvas)
+	(if (> *selected-drawing* 0)
+	    2
+	    1)))
 
 
 (defmethod ad/stroke-cd ((element <boundary>) canvas)
@@ -338,10 +342,10 @@
 
 (defmethod ad/stroke-cd ((element <path>) canvas)
   ;; stroke path center
-  (unless *fast-drawing* 
-    (ad/stroke-points (points element)
-		      canvas
-		      :path-mode-open-lines))
+  #-windows (unless *fast-drawing*
+	      (ad/stroke-points (points element)
+				canvas
+				:path-mode-open-lines))
   ;; stroke path outline
   (ad/stroke-points (outline-coords element) 
 		    canvas
@@ -490,6 +494,7 @@
       (when (> diff 0.1d0)
 	(let ((drawproc #'(lambda ()
 			    (cd:activate *canvas*)
+			    (setf *selected-drawing* 0)
 			    (draw-structure *structure* *canvas*)
 			    (cd:flush *canvas*))))
 	  (if trace-on
@@ -565,7 +570,7 @@
   (let ((pair (assoc n *layer-color-assoc*)))
     (if pair
 	(cdr pair)
-	cd:+white+)))
+	cd:+gray+)))
 
 
 (defun main (&rest args)
