@@ -1,5 +1,31 @@
-* Cl-Gdsfeel 
+* cl-gdsfeel
 
-** Usage
+common lisp による GDS 実装
 
-** Installation
+** インストール
+
+#+begin_src bash
+  cd {quicklisp/asdfがスキャンしてくれるディレクトリ}
+#+end_src
+
+#+begin_src bash
+  git clone https://github.com/kenjirofukuda/cl-gdsfeel.git
+  git clone https://github.com/kenjirofukuda/cl-geometry2.git
+  git clone https://github.com/lispnik/cd.git
+  git clone https://github.com/lispnik/im.git
+  git clone https://github.com/lispnik/tecgraf-base.git
+  git clone https://github.com/lispnik/tecgraf-libs.git
+  git clone https://github.com/lispnik/iup.git
+#+end_src
+
+Emacs を起動し、SLIME または SLY 環境に入る。
+
+以下は SLIME REPL 環境
+#+begin_src common-lisp
+  ;; GDS環境のロード
+  CL-USER> (ql:quickload :cl-gdsfeel)
+  ;; GUI名前空間に移動
+  CL-USER> (in-package cl-gdsfeel/iup-gui)
+  ;; GUI を起動
+  CL-GDSFEEL/IUP-GUI> (start-gds-thread)
+#+end_src
