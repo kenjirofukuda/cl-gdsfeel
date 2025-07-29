@@ -2,6 +2,8 @@
 
 common lisp による GDS 実装
 
+[[file:./images/main-screen.png]]
+
 ** インストール
 
 #+begin_src bash
@@ -49,7 +51,7 @@ https://github.com/lispnik/cd/blob/master/cd/coord.lisp
 
 ** Windows で osicat が失敗する場合
 
-#+begin_src 
+#+begin_src
   Unknown CFFI type OSICAT-POSIX::NLINK
 #+end_src
 
