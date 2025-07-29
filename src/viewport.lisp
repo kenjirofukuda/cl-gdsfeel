@@ -127,8 +127,8 @@
 				 (port-center-y vp))))
 	(tx2 (m3scaling (vec (w-scale vp)
 			     (w-scale vp))))
-	(tx3  (m3translation (vec (- (w-center-x vp))
-				  (- (w-center-y vp))))))
+	(tx3 (m3translation (vec (- (w-center-x vp))
+				 (- (w-center-y vp))))))
     (m* tx1 tx2 tx3)))
 
 
@@ -171,7 +171,7 @@
 
 
 (defun call-with-transform (vp tx func)
-  (push-transform vp tx) 
+  (push-transform vp tx)
   (unwind-protect
        (progn
 	 (funcall func))

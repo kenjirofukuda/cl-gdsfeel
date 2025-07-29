@@ -16,7 +16,7 @@
    :resolved
    :resolved-children
    :data-bbox
-   
+
    :<named-container>
    :name
    :children
@@ -52,7 +52,7 @@
 
    :<primitive>
    :<element>
-   
+
    :structure
    :primitive-p
    :datatype
@@ -80,7 +80,7 @@
    :y-step
    :row-count
    :column-count
-   
+
    :points
    :calc-transform
    :used-layer-numbers
@@ -238,7 +238,7 @@
 	 (nrows (car dims))
 	 (result '()))
     (loop for i from 0 below nrows
-	  do (push (cons  
+	  do (push (cons
 		    (aref coords i 0)
 		    (aref coords i 1))
 		   result))
@@ -325,8 +325,8 @@
 	(xmins '())
 	(ymins '())
 	(xmaxs '())
-	(ymaxs '()))    
-    (loop for each in (children structure) 
+	(ymaxs '()))
+    (loop for each in (children structure)
 	  do (setq bbox (data-bbox each))
 	     (push (x-min bbox) xmins)
 	     (push (y-min bbox) ymins)
@@ -442,7 +442,7 @@
 (defmethod refnames ((structure <structure>))
   (remove-duplicates
    (map 'vector #'refname (reference-elements structure))
-   :test 'equalp)) 
+   :test 'equalp))
 
 
 (defun as-sorted-uniq (lst)
@@ -450,7 +450,7 @@
 
 
 (defmethod used-layer-numbers ((structure <structure>))
-  (as-sorted-uniq 
+  (as-sorted-uniq
    (mapcar (lambda (each) (layer each))
 	   (remove-if-not #'leaf-p (elements structure)))))
 
@@ -515,7 +515,7 @@
     (incf (depth walker))
     (walk walker each proc)
     (decf (depth walker))))
-  
+
 
 (defmethod depth ((structure <structure>))
   (let ((walker (make-instance '<walker>))
@@ -536,7 +536,7 @@
 (defmethod referenced-structures ((structure <structure>))
   (remove-if-not
    (lambda (each)
-     (some   
+     (some
       (lambda (el)
         (equalp (name structure) (refname el)))
       (no-leaf-children each)))

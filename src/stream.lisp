@@ -92,7 +92,7 @@
 ;; (2 . "record length")
 ;; (4 . "bgnlib")
 ;; (2 . "record length")
-;; (2 . "endlib") 
+;; (2 . "endlib")
 (define-constant +stream-format-min-size+ 10)
 
 ;;;; ----------------- Kernel  ----------------
@@ -120,7 +120,7 @@
 (defun read-byte-vector (in size)
   (let ((buff (make-array size :element-type '(unsigned-byte 8))))
     (read-sequence buff in)
-    buff))      
+    buff))
 
 
 (defun header-bytes (bytes)
@@ -181,7 +181,7 @@
 (defun decode-local-time (octet-array)
   (assert (= (length octet-array) 6))
   (let ((year (fix-year (elt octet-array 0)))
-        (rest-time (reverse (subseq octet-array 1)))) 
+        (rest-time (reverse (subseq octet-array 1))))
     (apply
      'local-time:encode-timestamp
      (concatenate 'list #(0) rest-time (vector year)))))
@@ -238,7 +238,7 @@
                  (progn
                    (setq structure container)
                    (setf (library structure) (library inform))))))
-          
+
           (_libname
            (setf (name (library inform)) body-data))
 
@@ -246,7 +246,7 @@
            (setf (user-unit (library inform)) (elt body-data 0))
            (setq uunit (elt body-data 0))
            (setf (meter-unit (library inform)) (elt body-data 1)))
-          
+
           (_strname
            (setf (name structure) body-data))
 
@@ -263,7 +263,7 @@
 	   (setf (path-width element) (fix-ce-value (* uunit body-data) uunit)))
           (_pathtype
            (setf (pathtype element) body-data))
-	  
+
           (_xy
            (setf (xy element) (map 'list
 				   (lambda (x) (fix-ce-value (* uunit x) uunit))
@@ -274,13 +274,13 @@
 		    (row-point (invert-point mat (third (points element)))))
 	       (setf (x-step element) (fix-ce-value (/ (vx2 col-point) (column-count element)) uunit))
 	       (setf (y-step element) (fix-ce-value (/ (vy2 row-point) (row-count element)) uunit)))))
-	  
+
           (_layer
            (setf (layer element) body-data))
-          
+
           (_datatype
            (setf (datatype element) body-data))
-          
+
           (_sname
            (setf (refname element) body-data))
 
@@ -297,7 +297,7 @@
 	   (setf (mag element) body-data)
 	   (unless (zerop body-data)
 	     (recout)))
-	  
+
           (_angle
 	   (setf (angle element) body-data)
 	   (unless (zerop body-data)
@@ -306,14 +306,14 @@
 	  (_colrow
 	   (setf (column-count element) (first body-data))
 	   (setf (row-count element) (second body-data)))
-	  
+
           (_string
            (setf (contents element) body-data))
-	  
+
           (_endel
            (setq element nil)
 	   )
-	  
+
 
           ))))
   inform)

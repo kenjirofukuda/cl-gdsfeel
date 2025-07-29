@@ -9,7 +9,7 @@
                "array-operations"
                "local-time"
 	       "3d-matrices"
-	       "cl-geometry2"
+	       "cl-geometry"
 	       "cl-colors2"
                "cl-slice"
 	       "cl-vectors"

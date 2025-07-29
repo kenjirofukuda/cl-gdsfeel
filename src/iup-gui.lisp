@@ -71,13 +71,13 @@
 			    sub-menu-file
 			    sub-menu-debug)))
 	   (struclist
-	     (iup:list :expand :yes 
+	     (iup:list :expand :yes
 		       ;;:maxsize "x800"
 		       :scrollbar :yes
 		       :action 'struclist-action-cb
 		       :handlename "struclist"))
 	   (elementlist
-	     (iup:list :expand :yes 
+	     (iup:list :expand :yes
 		       ;;:maxsize "x800"
 		       :scrollbar :yes
 		       :action 'elementlist-action-cb
@@ -97,8 +97,8 @@
 			 :handlename "canvas"))
 	   (hbox
 	     (iup:hbox (list
-			(iup:sbox struclist :handlename "sbox1")	
-			(iup:sbox elementlist :handlename "sbox2")	
+			(iup:sbox struclist :handlename "sbox1")
+			(iup:sbox elementlist :handlename "sbox2")
 			canvas)
 		       :handlename "contents"
 		       :expandchildren :no))
@@ -231,7 +231,7 @@
     (unwind-protect
          (progn
            (iup:popup dialog iup:+center+ iup:+center+)
-	   (let ((selected-path (iup:attribute dialog :value)))	     
+	   (let ((selected-path (iup:attribute dialog :value)))
              (iup:message +default-window-title+
 			  (format nil "Selected ~A" selected-path))
 	     (when selected-path
@@ -356,7 +356,7 @@
 				canvas
 				:path-mode-open-lines))
   ;; stroke path outline
-  (ad/stroke-points (outline-coords element) 
+  (ad/stroke-points (outline-coords element)
 		    canvas
 		    :path-mode-closed-lines))
 
@@ -388,7 +388,7 @@
 
 
 (defmethod ad/stroke-cd ((element <aref>) canvas)
-  (dolist (each (repeated-transform element)) 
+  (dolist (each (repeated-transform element))
     (with-transform *viewport* each
       (stroke-structure (ref-structure element)
 			canvas
@@ -448,7 +448,7 @@
 
 
 (defun canvas-motion-cb (handle x y status)
-  (when (gethash 'trace-motion-event *bool-table*) 
+  (when (gethash 'trace-motion-event *bool-table*)
     (print (list :handle handle :x x :y y :status (iup:status-plist status))))
   (let ((cp (cd-point x y)))
     (set-status (with-output-to-string (s)
@@ -501,7 +501,7 @@
 
 (defun canvas-wheel-cb (handle delta x y status)
   (when (gethash 'trace-wheel-event *bool-table*)
-    (print (list :handle handle :delta delta 
+    (print (list :handle handle :delta delta
 		 :x x :y y :status status)))
   (let ((cp (cd-point x y)))
     (whell-zoom *viewport* cp delta)
@@ -519,7 +519,7 @@
 						:height height)))
   (setf (port-width *viewport*) width)
   (setf (port-height *viewport*) height)
-  (damage-transform *viewport*)  
+  (damage-transform *viewport*)
   iup:+default+)
 
 
@@ -548,7 +548,7 @@
 
 (defun canvas-map-cb (handle)
   (setf *canvas* (cd:create-canvas
-		  (iup-cd:context-iup-dbuffer-rgb) handle))
+		  (iup-cd:context-iup) handle))
   iup:+default+)
 
 
@@ -562,7 +562,7 @@
   (let ((inform-result nil))
     (setq inform-result
 	  (make-instance '<inform>
-			 :path gds-file))        
+			 :path gds-file))
     (run inform-result)
     (setq *inform* inform-result)))
 
