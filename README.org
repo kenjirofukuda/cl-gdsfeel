@@ -18,6 +18,7 @@ common lisp による GDS 実装
   git clone https://github.com/lispnik/iup.git
 #+end_src
 
+** 実行
 Emacs を起動し、SLIME または SLY 環境に入る。
 
 以下は SLIME REPL 環境
@@ -28,4 +29,34 @@ Emacs を起動し、SLIME または SLY 環境に入る。
   CL-USER> (in-package cl-gdsfeel/iup-gui)
   ;; GUI を起動
   CL-GDSFEEL/IUP-GUI> (start-gds-thread)
+#+end_src
+
+** CD のバグ
+もし、transform-scale を使用する場合は以下の修正が必要
+
+https://github.com/lispnik/cd/blob/master/cd/coord.lisp
+
+#+begin_src common-lisp
+  (defun transform-scale (canvas sx sy)
+   "Applies a scale to the current transformation."
+-  (cd-cffi::%cd-canvas-transform-translate canvas (coerce sx 'double-float) (coerce sy 'double-float)))
++  (cd-cffi::%cd-canvas-transform-scale canvas (coerce sx 'double-float) (coerce sy 'double-float)))
+
+ (defun transform-rotate (canvas angle)
+   "Applies a rotation to the current transformation. Angle is in degrees,
+
+#+end_src
+
+** Windows で osicat が失敗する場合
+
+#+begin_src 
+  Unknown CFFI type OSICAT-POSIX::NLINK
+#+end_src
+
+https://github.com/osicat/osicat/issues/62 にて説明があるが要するに、削除されてしまった以下を復活させろとのこと。
+
+posix/basic-unitint.lisp
+#+begin_src common-lisp
+  #+windows
+  (ctype nlink "short")
 #+end_src
